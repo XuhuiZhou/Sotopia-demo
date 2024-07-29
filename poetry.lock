@@ -958,6 +958,25 @@ files = [
 ]
 
 [[package]]
+name = "haicosystem"
+version = "0.0.1"
+description = "An Ecosystem for Sandboxing Safety Risks in Human-AI Coexisting Environments"
+optional = false
+python-versions = ">=3.11, <3.13"
+files = []
+develop = false
+
+[package.dependencies]
+sotopia = "0.0.11"
+types-requests = "^2.31"
+
+[package.source]
+type = "git"
+url = "https://github.com/XuhuiZhou/HAI-Cosys.git"
+reference = "HEAD"
+resolved_reference = "bdd298f5ada8a907b2a3371fbc4a5be212b54252"
+
+[[package]]
 name = "hiredis"
 version = "2.4.0"
 description = "Python wrapper for hiredis"
@@ -4239,4 +4258,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <3.13"
-content-hash = "d8b211b997d67424f1fafa7d0408e23eb03b697fcc5b718aa1ee851bbfeec2e7"
+content-hash = "8847d4916cda3aecced21b2f5d03521a59af8bb2ff6c7d99f001f87fc710cd25"
