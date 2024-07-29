@@ -973,8 +973,8 @@ types-requests = "^2.31"
 [package.source]
 type = "git"
 url = "https://github.com/XuhuiZhou/HAI-Cosys.git"
-reference = "feature/seperate_render_for_humans"
-resolved_reference = "51e85963a8809e549c3052d05a817c3168c3c061"
+reference = "HEAD"
+resolved_reference = "801734c8c0eeb95a6d8e76734cb4fe084f2ff47d"
 
 [[package]]
 name = "hiredis"
@@ -4258,4 +4258,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <3.13"
-content-hash = "b170c08bea452e1decbeb5697c16d49656de2ea284774bc31d234ec78ad56990"
+content-hash = "8847d4916cda3aecced21b2f5d03521a59af8bb2ff6c7d99f001f87fc710cd25"
