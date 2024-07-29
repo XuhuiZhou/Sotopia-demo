@@ -10,7 +10,6 @@ packages = [{include = "haicosystemDemo"}]
 python = ">=3.11, <3.13"
 sotopia = "0.0.11"
 types-requests = "^2.31"
-haicosystem = { git = "https://github.com/XuhuiZhou/HAI-Cosys.git"}
 streamlit = "*"
 
 [tool.poetry.group.dev.dependencies]
