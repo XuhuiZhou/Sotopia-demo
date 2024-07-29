@@ -11,7 +11,7 @@ try:
   import haicosystem # type: ignore
 
 except ModuleNotFoundError as e:
-  subprocess.Popen([f'{sys.executable} -m pip install git+https://{st.secrets["GITHUB_TOKEN"]}@github.com/XuhuiZhou/HAI-Cosys.git'], shell=True)
+  subprocess.Popen([f'{sys.executable} -m pip install git+https://{st.secrets["GITHUB_TOKEN"]}@github.com/XuhuiZhou/HAI-Cosys.git --user'], shell=True)
   # wait for subprocess to install package before running your actual code below
   time.sleep(90)
 
