@@ -1,15 +1,35 @@
 import os
 import streamlit as st
-os.environ["REDIS_OM_URL"] = st.secrets["REDIS_OM_URL"]
-print(os.environ['REDIS_OM_URL'])
 from sotopia.database import EpisodeLog
+from rendering.render_episode import streamlit_rendering_basic
+from chat.chat import chat_demo
 
-from haicosystem.utils.render import render_for_humans # type: ignore
-from haicosystemDemo.hai_stream import streamlit_rendering
-st.title("HAICosystem Episode Rendering")
-# Text input for episode number
-episode_number = st.text_input("Enter episode number:", value="2")
-episode = EpisodeLog.find(EpisodeLog.tag == "haicosystem_debug")[int(episode_number)]  # type: ignore
-assert isinstance(episode, EpisodeLog)
-messages = render_for_humans(episode)
-streamlit_rendering(messages)
+# os.environ["REDIS_OM_URL"] = st.secrets["REDIS_OM_URL"]
+print(os.environ["REDIS_OM_URL"])
+
+
+DISPLAY_MODE = "Display Episodes"
+CHAT_MODE = "Chat with Model"
+
+# from haicosystem.utils.render import render_for_humans # type: ignore
+# from haicosystemDemo.hai_stream import streamlit_rendering
+
+
+def display():
+    st.title("Episode Rendering...")
+    # Text input for episode number
+    episode_number = st.text_input("Enter episode number:", value="2")
+    episode = EpisodeLog.find(EpisodeLog.tag == "gpt-4_gpt-4_v0.0.1_clean")[
+        int(episode_number)
+    ]  # type: ignore
+    assert isinstance(episode, EpisodeLog)
+    messages = episode.render_for_humans()[1]
+    print(messages)
+    streamlit_rendering_basic(messages)
+
+
+option = st.sidebar.radio("Function", (DISPLAY_MODE, CHAT_MODE))
+if option == DISPLAY_MODE:
+    display()
+elif option == CHAT_MODE:
+    chat_demo()
