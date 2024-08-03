@@ -1,8 +1,10 @@
 import os
+
 import streamlit as st
 from sotopia.database import EpisodeLog
-from rendering.render_episode import streamlit_rendering_basic
-from chat.chat import chat_demo
+
+from socialstream.chat import chat_demo, initialize_session_state
+from socialstream.rendering import rendering_demo
 
 # os.environ["REDIS_OM_URL"] = st.secrets["REDIS_OM_URL"]
 print(os.environ["REDIS_OM_URL"])
@@ -15,7 +17,7 @@ CHAT_MODE = "Chat with Model"
 # from haicosystemDemo.hai_stream import streamlit_rendering
 
 
-def display():
+def display() -> None:
     st.title("Episode Rendering...")
     # Text input for episode number
     episode_number = st.text_input("Enter episode number:", value="2")
@@ -24,8 +26,7 @@ def display():
     ]  # type: ignore
     assert isinstance(episode, EpisodeLog)
     messages = episode.render_for_humans()[1]
-    print(messages)
-    streamlit_rendering_basic(messages)
+    rendering_demo(messages)
 
 
 option = st.sidebar.radio("Function", (DISPLAY_MODE, CHAT_MODE))

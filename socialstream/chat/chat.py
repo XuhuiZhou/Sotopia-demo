@@ -1,17 +1,17 @@
+import asyncio
+from functools import wraps
+from typing import cast
+
 import streamlit as st
-from sotopia.database import EnvironmentProfile, AgentProfile, EnvAgentComboStorage
-from sotopia.envs import ParallelSotopiaEnv
 from sotopia.agents import Agents, LLMAgent
+from sotopia.database import AgentProfile, EnvAgentComboStorage, EnvironmentProfile
+from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     ReachGoalLLMEvaluator,
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
 )
-from typing import cast
-
-import asyncio
-from functools import wraps
 
 
 def async_to_sync(async_func):
@@ -93,20 +93,22 @@ def get_full_name(agent_profile: AgentProfile):
     return f"{agent_profile.first_name} {agent_profile.last_name}"
 
 
-def initialize_session_state():
-    st.session_state.conversation = []
-    st.session_state.active = False
-    st.session_state.background = "Default Background"
-    st.session_state.env_agent_combo = EnvAgentComboStorage.get(
-        list(EnvAgentComboStorage.all_pks())[0]
-    )
-    st.session_state.state = ActionState.IDLE
-    st.session_state.env = None
-    st.session_state.agents = None
-    st.session_state.environment_messages = None
-    st.session_state.messages = []
-    st.session_state.rewards = []
-    st.session_state.reasons = []
+def initialize_session_state() -> None:
+    if "active" not in st.session_state:
+        st.session_state.active = False
+    # if not st.session_state.active:
+        st.session_state.conversation = []
+        st.session_state.background = "Default Background"
+        st.session_state.env_agent_combo = EnvAgentComboStorage.get(
+            list(EnvAgentComboStorage.all_pks())[0]
+        )
+        st.session_state.state = ActionState.IDLE
+        st.session_state.env = None
+        st.session_state.agents = None
+        st.session_state.environment_messages = None
+        st.session_state.messages = []
+        st.session_state.rewards = []
+        st.session_state.reasons = []
 
     all_agents = [AgentProfile.get(id) for id in list(AgentProfile.all_pks())[:10]]
     all_envs = [
@@ -119,13 +121,14 @@ def initialize_session_state():
     st.session_state.env_mapping = {
         env_profile.codename: env_profile for env_profile in all_envs
     }
-
+        
+        
 
 def reset_session_state():
     pass
 
 
-def get_env_agents(env_agent_combo):
+def get_env_agents(env_agent_combo) -> None:
     environment_profile = EnvironmentProfile.get(pk=env_agent_combo.env_id)
     agent_profiles = [
         AgentProfile.get(pk=agent_id) for agent_id in env_agent_combo.agent_ids
@@ -160,7 +163,7 @@ def get_env_agents(env_agent_combo):
 POSITION_CHOICES = ["First Agent", "Second Agent"]
 
 
-def chat_demo():
+def chat_demo() -> None:
     """
     State machine: HUMAN_WAITING (waiting for human input) -> HUMAN_SPEAKING -> MODEL_WAITING == MODEL_SPEAKING (model generate) -> HUMAN_WAITING
     Use "active" to indicate whether the conversation is still ongoing
@@ -275,6 +278,8 @@ def chat_demo():
         )
 
     print_current_speaker()
+    print("State: ", st.session_state.state)
+    print("Active: ", st.session_state.active)
 
     if st.session_state.active and st.session_state.state in [
         ActionState.HUMAN_SPEAKING,
