@@ -18,7 +18,7 @@ poetry install
 
 
 ## Usage
-streamlist run app.py
+streamlit run app.py
 
 
 ## Contribution
