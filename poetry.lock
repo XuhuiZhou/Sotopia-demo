@@ -1599,13 +1599,13 @@ requests = ">=2,<3"
 
 [[package]]
 name = "litellm"
-version = "1.23.16"
+version = "1.40.13"
 description = "Library to easily interface with LLM API providers"
 optional = false
-python-versions = ">=3.8, !=2.7.*, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, !=3.6.*, !=3.7.*"
+python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
 files = [
-    {file = "litellm-1.23.16-py3-none-any.whl", hash = "sha256:c1d7183edc74dad7d140cb7c9ac0c23e550d4126549eb302c75b46380724a3ad"},
-    {file = "litellm-1.23.16.tar.gz", hash = "sha256:7d477c8560743cc762f1e61fc2c209ffa9d733879da198daeb5d0effbb62a1c1"},
+    {file = "litellm-1.40.13-py3-none-any.whl", hash = "sha256:b95ad1dea43f49804122c3f8a6c9f90ffb1d1d8654887d94aa6f77ed46ba7a5d"},
+    {file = "litellm-1.40.13.tar.gz", hash = "sha256:7898a59a2a5c49abe166c857f79eeebe4fa3218cb93879da5f17b640787587cf"},
 ]
 
 [package.dependencies]
@@ -1613,15 +1613,15 @@ aiohttp = "*"
 click = "*"
 importlib-metadata = ">=6.8.0"
 jinja2 = ">=3.1.2,<4.0.0"
-openai = ">=1.0.0"
+openai = ">=1.27.0"
 python-dotenv = ">=0.2.0"
 requests = ">=2.31.0,<3.0.0"
-tiktoken = ">=0.4.0"
+tiktoken = ">=0.7.0"
 tokenizers = "*"
 
 [package.extras]
-extra-proxy = ["streamlit (>=1.29.0,<2.0.0)"]
-proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "backoff", "fastapi (>=0.104.1,<0.105.0)", "fastapi-sso (>=0.10.0,<0.11.0)", "gunicorn (>=21.2.0,<22.0.0)", "orjson (>=3.9.7,<4.0.0)", "python-multipart (>=0.0.6,<0.0.7)", "pyyaml (>=6.0.1,<7.0.0)", "rq", "uvicorn (>=0.22.0,<0.23.0)"]
+extra-proxy = ["azure-identity (>=1.15.0,<2.0.0)", "azure-keyvault-secrets (>=4.8.0,<5.0.0)", "google-cloud-kms (>=2.21.3,<3.0.0)", "prisma (==0.11.0)", "resend (>=0.8.0,<0.9.0)"]
+proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "backoff", "cryptography (>=42.0.5,<43.0.0)", "fastapi (>=0.111.0,<0.112.0)", "fastapi-sso (>=0.10.0,<0.11.0)", "gunicorn (>=22.0.0,<23.0.0)", "orjson (>=3.9.7,<4.0.0)", "python-multipart (>=0.0.9,<0.0.10)", "pyyaml (>=6.0.1,<7.0.0)", "rq", "uvicorn (>=0.22.0,<0.23.0)"]
 
 [[package]]
 name = "lxml"
@@ -3461,36 +3461,38 @@ name = "sotopia"
 version = "0.0.11"
 description = "A platform for simulating and evaluating social interaction."
 optional = false
-python-versions = "<3.13,>=3.10"
-files = [
-    {file = "sotopia-0.0.11-py3-none-any.whl", hash = "sha256:0fe27fb027b759d5a52ef91cec23a2858e844505a33ea09dadb2ab96f47934f8"},
-    {file = "sotopia-0.0.11.tar.gz", hash = "sha256:38ff5660ec03abaa8a486813edc273b8bd229e884a769a76ef664c26f4c0d1a4"},
-]
+python-versions = ">=3.10, <3.13"
+files = []
+develop = false
 
 [package.dependencies]
-absl-py = ">=2.0.0,<3.0.0"
-beartype = ">=0.14.0,<0.15.0"
-gin-config = ">=0.5.0,<0.6.0"
-langchain = ">=0.2.5,<0.3.0"
-langchain-openai = ">=0.1.8,<0.2.0"
-litellm = ">=1.23.12,<1.24.0"
+absl-py = "^2.0.0"
+beartype = "^0.14.0"
+gin-config = "^0.5.0"
+langchain = "~0.2.5"
+langchain-openai = "~0.1.8"
+litellm = ">=1.23.12,<1.41.0"
 lxml = ">=4.9.3,<6.0.0"
-openai = ">=1.11.0,<2.0.0"
+openai = "^1.11.0"
 PettingZoo = "1.24.3"
 pydantic = "1.10.12"
-redis-om = ">=0.2.1,<0.3.0"
-rich = ">=13.6.0,<14.0.0"
-tabulate = ">=0.9.0,<0.10.0"
-together = ">=0.2.4,<0.3.0"
-xmltodict = ">=0.13.0,<0.14.0"
+redis-om = "^0.2.1"
+rich = "^13.6.0"
+together = "^0.2.4"
 
 [package.extras]
-anthropic = ["anthropic (>=0.26,<0.29)"]
+anthropic = ["anthropic (>=0.26,<0.32)"]
 chat = ["fastapi (>=0.109.2,<0.111.0)"]
 cohere = ["cohere (>=5.1.8,<6.0.0)"]
 examples = ["datasets (>=2.19.0,<3.0.0)", "pandas (>=2.1.1,<3.0.0)", "scipy (>=1.13.1,<2.0.0)", "torch (>=2.3.0,<3.0.0)", "transformers (>=4.41.0,<5.0.0)"]
 google-generativeai = ["google-generativeai (>=0.5.4,<0.8.0)"]
 groq = ["groq (>=0.4.2,<0.10.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/sotopia-lab/sotopia.git"
+reference = "HEAD"
+resolved_reference = "0b5cf3ffcbd34102c1d118a1109b9d5ee44606dd"
 
 [[package]]
 name = "sqlalchemy"
@@ -4142,17 +4144,6 @@ files = [
 ]
 
 [[package]]
-name = "xmltodict"
-version = "0.13.0"
-description = "Makes working with XML feel like you are working with JSON"
-optional = false
-python-versions = ">=3.4"
-files = [
-    {file = "xmltodict-0.13.0-py2.py3-none-any.whl", hash = "sha256:aa89e8fd76320154a40d19a0df04a4695fb9dc5ba977cbb68ab3e4eb225e7852"},
-    {file = "xmltodict-0.13.0.tar.gz", hash = "sha256:341595a488e3e01a85a9d8911d8912fd922ede5fecc4dce437eb4b6c8d037e56"},
-]
-
-[[package]]
 name = "yarl"
 version = "1.9.4"
 description = "Yet another URL library"
@@ -4273,4 +4264,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11, <3.13"
-content-hash = "c10941360d06903725545b2060ffce37134130c250380028ba4391cf6e5031df"
+content-hash = "4d41c41cf74f9f070de4c932587ed752146177853374606ff04c35f1d4a85a9e"
