@@ -20,6 +20,9 @@ poetry install
 ## Usage
 streamlit run app.py
 
+### Chat
+First choose the agents (two agents cannot be the same), scenarios and the agent you are going to be, then click `start` to start interaction. When you want to leave and get evaluated, click `stop` to start evaluation.
+
 
 ## Contribution
 ### Install dev options
