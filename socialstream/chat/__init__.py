@@ -1,1 +1,1 @@
-from .chat import chat_demo, initialize_session_state
+from .chat_new import chat_demo

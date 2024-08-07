@@ -3,7 +3,7 @@ import os
 import streamlit as st
 from sotopia.database import EpisodeLog
 
-from socialstream.chat import chat_demo, initialize_session_state
+from socialstream.chat import chat_demo
 from socialstream.rendering import rendering_demo
 
 # os.environ["REDIS_OM_URL"] = st.secrets["REDIS_OM_URL"]
@@ -12,9 +12,6 @@ print(os.environ["REDIS_OM_URL"])
 
 DISPLAY_MODE = "Display Episodes"
 CHAT_MODE = "Chat with Model"
-
-# from haicosystem.utils.render import render_for_humans # type: ignore
-# from haicosystemDemo.hai_stream import streamlit_rendering
 
 
 def display() -> None:

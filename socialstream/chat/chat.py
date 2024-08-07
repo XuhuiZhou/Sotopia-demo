@@ -96,7 +96,7 @@ def get_full_name(agent_profile: AgentProfile):
 def initialize_session_state() -> None:
     if "active" not in st.session_state:
         st.session_state.active = False
-    # if not st.session_state.active:
+        # if not st.session_state.active:
         st.session_state.conversation = []
         st.session_state.background = "Default Background"
         st.session_state.env_agent_combo = EnvAgentComboStorage.get(
@@ -121,8 +121,7 @@ def initialize_session_state() -> None:
     st.session_state.env_mapping = {
         env_profile.codename: env_profile for env_profile in all_envs
     }
-        
-        
+
 
 def reset_session_state():
     pass
@@ -212,7 +211,6 @@ def chat_demo() -> None:
         key="user_input",
         disabled=st.session_state.state != ActionState.HUMAN_WAITING,
     )
-
     button_col1, button_col2 = st.columns(2)
     with button_col1:
         send_button = st.button(
@@ -261,8 +259,6 @@ def chat_demo() -> None:
         """,
         unsafe_allow_html=True,
     )
-
-    from sotopia.messages import AgentAction
 
     for index, agent_name in enumerate(env.agents):
         agents[agent_name].goal = env.profile.agent_goals[index]

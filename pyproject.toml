@@ -2,7 +2,7 @@
 name = "socialstream"
 version = "0.0.1"
 description = "An demo"
-authors = ["Zhe Su <suzhesz00@gmail.com>"]
+authors = ["Zhe Su <suzhesz00@gmail.com>", "Xuhui Zhou <zhouxuhui2018@gmail.com>"]
 readme = "README.md"
 packages = [{include = "socialstream"}]
 
