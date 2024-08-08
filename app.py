@@ -27,7 +27,7 @@ def display() -> None:
     rendering_demo(messages)
 
 
-option = st.sidebar.radio("Function", (DISPLAY_MODE, CHAT_MODE))
+option = st.sidebar.radio("Function", (CHAT_MODE, DISPLAY_MODE))
 if option == DISPLAY_MODE:
     display()
 elif option == CHAT_MODE:
