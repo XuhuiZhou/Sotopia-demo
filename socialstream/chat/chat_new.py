@@ -1,10 +1,16 @@
 import asyncio
+import json
 from functools import wraps
 from typing import cast
 
 import streamlit as st
 from sotopia.agents import Agents, LLMAgent
-from sotopia.database import AgentProfile, EnvAgentComboStorage, EnvironmentProfile
+from sotopia.database import (
+    AgentProfile,
+    EnvAgentComboStorage,
+    EnvironmentProfile,
+    EpisodeLog,
+)
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
@@ -12,7 +18,10 @@ from sotopia.envs.evaluators import (
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
 )
+from sotopia.envs.parallel import _agent_profile_to_friendabove_self
 from sotopia.messages import AgentAction
+
+from socialstream.utils import messageForRendering, render_for_humans
 
 
 def async_to_sync(async_func) -> callable:
@@ -157,8 +166,6 @@ def step(user_input: str | None = None) -> None:
         st.session_state.active = False
         st.session_state.done = False
 
-        from sotopia.database import EpisodeLog
-
         agent_list = list(st.session_state.agents.values())
 
         st.session_state.rewards = [
@@ -219,9 +226,8 @@ def get_env_agents(env_agent_combo):  # type: ignore
 
 def chat_demo() -> None:
     initialize_session_state()
-    print("Current state:", st.session_state.state)
 
-    with st.expander("Scenario Settings"):
+    with st.expander("Scenario Settings", expanded=True):
         scenarios = st.session_state.env_mapping
         agent_list_1, agent_list_2 = st.session_state.agent_mapping
         scenario_choice = st.selectbox(
@@ -256,6 +262,13 @@ def chat_demo() -> None:
     with start_col:
         start_button = st.button("Start", disabled=st.session_state.active)
         if start_button:
+            set_settings(
+                agent_choice_1,
+                agent_choice_2,
+                scenario_choice,
+                user_position,
+                reset_msgs=True,
+            )
             st.session_state.active = True
             st.session_state.state = (
                 ActionState.HUMAN_WAITING
@@ -270,7 +283,7 @@ def chat_demo() -> None:
 
     with stop_col:
         stop_button = st.button("Stop", disabled=not st.session_state.active)
-        if stop_button:
+        if stop_button and st.session_state.active:
             st.session_state.active = False
             st.session_state.state = ActionState.EVALUATION_WAITING
 
@@ -289,8 +302,10 @@ def chat_demo() -> None:
                 step()  # model's turn
 
     if st.session_state.state == ActionState.EVALUATION_WAITING:
+        print("Evaluating...")
         with st.spinner("Evaluating..."):
             step()
+            st.rerun()
 
     with st.expander("Background", expanded=False):
         agent_infos = compose_agents()
@@ -305,14 +320,19 @@ def chat_demo() -> None:
                 unsafe_allow_html=True,
             )
 
+    messages = render_messages()
+    tag_for_eval = ["Agent 1", "Agent 2", "General"]
+    chat_history = [
+        message for message in messages if message["role"] not in tag_for_eval
+    ]
+    evaluation = [message for message in messages if message["role"] in tag_for_eval]
+
     with st.expander("Chat History", expanded=True):
-        pretty_print_messages(compose_messages()[:-3])
+        streamlit_rendering(chat_history)
 
     with st.expander("Evaluation"):
-        pretty_print_evaluation(compose_messages()[-2:])
-
-
-from sotopia.database import EpisodeLog
+        streamlit_rendering(evaluation)
+        # pretty_print_evaluation(compose_messages()[-2:])
 
 
 def pretty_print_evaluation(messages: list[str]) -> None:
@@ -340,18 +360,84 @@ def pretty_print_messages(messages: list[str]) -> None:
         message = message.replace("\n", "<br />")
         st.markdown(
             f"""
-            <details>
-                <summary>Message {index + 1}</summary>
+            <div style="background-color: lightblue; padding: 10px; border-radius: 5px;">
                 {message}
-            </details>
+            </div>
             """,
             unsafe_allow_html=True,
         )
 
 
+def streamlit_rendering(messages: list[messageForRendering]) -> None:
+    # print(messages)
+    agent1_name, agent2_name = list(st.session_state.agents.keys())[:2]
+    agent_color_mapping = {
+        agent1_name: "lightblue",
+        agent2_name: "green",
+    }
+
+    avatar_mapping = {
+        "env": "🌍",
+        "obs": "🌍",
+    }
+    if HUMAN_AGENT_IDX == 0:
+        avatar_mapping[agent1_name] = "👤"
+        avatar_mapping[agent2_name] = "🤖"
+    else:
+        avatar_mapping[agent1_name] = "🤖"
+        avatar_mapping[agent2_name] = "👤"
+    print(avatar_mapping)
+
+    agent_color_mapping = {
+        "Agent 1": "lightblue",
+        "Agent 2": "green",
+    }
+
+    role_mapping = {
+        "Background Info": "background",
+        "System": "info",
+        "Environment": "env",
+        "Observation": "obs",
+        "General": "info",
+        "Agent 1": "info",
+        "Agent 2": "info",
+        agent1_name: agent1_name,
+        agent2_name: agent2_name,
+    }
+
+    # messages = [message for message in messages if message["role"] != "Background Info"]
+
+    for index, message in enumerate(messages):
+        print(message)
+        role = role_mapping.get(message["role"], "info")
+        content = message["content"]
+
+        if role == "background":
+            continue
+
+        if role == "obs" or message.get("type") == "action":
+            content = json.loads(content)
+
+        with st.chat_message(role, avatar=avatar_mapping.get(role, None)):
+            if isinstance(content, dict):
+                st.json(content)
+            elif role == "info":
+                st.markdown(
+                    f"""
+                    <div style="background-color: lightblue; padding: 10px; border-radius: 5px;">
+                        {content}
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            elif index < 2:  # Apply foldable for the first two messages
+                continue
+            else:
+                st.markdown(content.replace("\n", "<br />"), unsafe_allow_html=True)
+
+
 def compose_agents() -> list[str]:  # type: ignore
     agents = st.session_state.agents
-    from sotopia.envs.parallel import _agent_profile_to_friendabove_self
 
     agent_to_render = [
         _agent_profile_to_friendabove_self(agent.profile, agent_id)
@@ -383,8 +469,33 @@ def compose_messages() -> list[str]:  # type: ignore
     return ep_to_render
 
 
+def render_messages() -> list[messageForRendering]:
+    env = st.session_state.env
+    agent_list = list(st.session_state.agents.values())
+
+    epilog = EpisodeLog(
+        environment=env.profile.pk,
+        agents=[agent.profile.pk for agent in agent_list],
+        tag="tmp",
+        models=[env.model_name, agent_list[0].model_name, agent_list[1].model_name],
+        messages=[
+            [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
+            for messages_in_turn in st.session_state.messages
+        ],
+        reasoning=st.session_state.reasoning,
+        rewards=st.session_state.rewards,
+        rewards_prompt="",
+    )
+    rendered_messages = render_for_humans(epilog)
+    return rendered_messages
+
+
 def set_settings(
-    agent_choice_1, agent_choice_2, scenario_choice, user_position
+    agent_choice_1: int,
+    agent_choice_2: int,
+    scenario_choice: int,
+    user_position: int,
+    reset_msgs: bool = False,
 ) -> None:  # type: ignore
     global HUMAN_AGENT_IDX
     scenarios = st.session_state.env_mapping
@@ -400,6 +511,10 @@ def set_settings(
     st.session_state.env = env
     st.session_state.agents = agents
     st.session_state.environment_messages = environment_messages
+    if reset_msgs:
+        st.session_state.messages = []
+        st.session_state.reasoning = ""
+        st.session_state.rewards = [0.0, 0.0]
     st.session_state.messages = (
         [
             [
