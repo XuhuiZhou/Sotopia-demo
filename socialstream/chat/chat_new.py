@@ -102,9 +102,6 @@ def initialize_session_state() -> None:
 
 
 def step(user_input: str | None = None) -> None:
-    # import time
-    # time.sleep(5)
-    # return
     env = st.session_state.env
 
     agent_messages: dict[str, AgentAction] = dict()
@@ -243,18 +240,25 @@ def chat_demo() -> None:
                 "Choose the first agent:",
                 agent_list_1.keys(),
                 disabled=st.session_state.active,
+                index=0,
             )
         with agent_col2:
             agent_choice_2 = st.selectbox(
                 "Choose the second agent:",
                 agent_list_2.keys(),
                 disabled=st.session_state.active,
+                index=1,
             )
         user_position = st.selectbox(
             "Do you want to be the first or second agent?",
             POSITION_CHOICES,
             disabled=st.session_state.active,
         )
+        if agent_choice_1 == agent_choice_2:
+            st.warning(
+                "The two agents cannot be the same. Please select different agents."
+            )
+            st.stop()
 
         if (
             agent_choice_1 or agent_choice_2 or user_position or scenario_choice
@@ -311,18 +315,23 @@ def chat_demo() -> None:
             step()
             st.rerun()
 
-    with st.expander("Background", expanded=False):
-        agent_infos = compose_agents()
+    with st.expander("Background", expanded=True):
+        agent_infos = compose_agent_messages()
+        env_info, goals_info = compose_env_messages()
+
+        st.markdown(
+            f"""**Scenario:** {env_info}""",
+            unsafe_allow_html=True,
+        )
         for agent_idx, agent_info in enumerate(agent_infos):
             st.markdown(
-                f"""
-                <details>
-                    <summary>Agent {agent_idx + 1} Background</summary>
-                    {agent_info}
-                </details>
-            """,
+                f"""**Agent {agent_idx + 1} Background:** {agent_info}Goal: {goals_info[agent_idx]}""",
                 unsafe_allow_html=True,
             )
+
+        st.markdown(
+            f"""**Now you are Agent {HUMAN_AGENT_IDX + 1}. <br />Your goal: {goals_info[HUMAN_AGENT_IDX]}**"""
+        )
 
     messages = render_messages()
     tag_for_eval = ["Agent 1", "Agent 2", "General"]
@@ -335,41 +344,8 @@ def chat_demo() -> None:
         streamlit_rendering(chat_history)
 
     with st.expander("Evaluation"):
+        # a small bug: when there is a agent not saying anything there will be no separate evaluation for that agent
         streamlit_rendering(evaluation)
-        # pretty_print_evaluation(compose_messages()[-2:])
-
-
-def pretty_print_evaluation(messages: list[str]) -> None:
-    assert len(messages) == 2, "Evaluation messages should be of length 2"
-    st.markdown(
-        f"""
-            <details>
-                <summary> Evaluation </summary>
-                Reasoning: {messages[0]}
-            </details>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        f"""
-         Rewards: {messages[1]}
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def pretty_print_messages(messages: list[str]) -> None:
-    for index, message in enumerate(messages):
-        message = message.replace("\n", "<br />")
-        st.markdown(
-            f"""
-            <div style="background-color: lightblue; padding: 10px; border-radius: 5px;">
-                {message}
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
 
 def streamlit_rendering(messages: list[messageForRendering]) -> None:
@@ -440,7 +416,16 @@ def streamlit_rendering(messages: list[messageForRendering]) -> None:
                 st.markdown(content.replace("\n", "<br />"), unsafe_allow_html=True)
 
 
-def compose_agents() -> list[str]:  # type: ignore
+def compose_env_messages() -> tuple[str, list[str]]:
+    env: ParallelSotopiaEnv = st.session_state.env
+    env_profile = EnvironmentProfile.get(env.profile.pk)
+    env_to_render = env_profile.scenario
+    goals_to_render = env_profile.agent_goals
+
+    return env_to_render, goals_to_render
+
+
+def compose_agent_messages() -> list[str]:  # type: ignore
     agents = st.session_state.agents
 
     agent_to_render = [
@@ -448,29 +433,6 @@ def compose_agents() -> list[str]:  # type: ignore
         for agent_id, agent in enumerate(agents.values())
     ]
     return agent_to_render
-
-
-def compose_messages() -> list[str]:  # type: ignore
-    env = st.session_state.env
-    agent_list = list(st.session_state.agents.values())
-
-    epilog = EpisodeLog(
-        environment=env.profile.pk,
-        agents=[agent.profile.pk for agent in agent_list],
-        tag="tmp",
-        models=[env.model_name, agent_list[0].model_name, agent_list[1].model_name],
-        messages=[
-            [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
-            for messages_in_turn in st.session_state.messages
-        ],
-        reasoning=st.session_state.reasoning,
-        rewards=st.session_state.rewards,
-        rewards_prompt="",
-    )
-    ep_to_render = epilog.render_for_humans()[1]
-    ep_to_render[0] = ep_to_render[0].split("Conversation Starts:")[-1].strip()
-
-    return ep_to_render
 
 
 def render_messages() -> list[messageForRendering]:
