@@ -73,9 +73,10 @@ def initialize_session_state() -> None:
         # if not st.session_state.active:
         st.session_state.conversation = []
         st.session_state.background = "Default Background"
-        st.session_state.env_agent_combo = EnvAgentComboStorage.get(
-            list(EnvAgentComboStorage.all_pks())[0]
-        )
+        # st.session_state.env_agent_combo = EnvAgentComboStorage.get(
+        #     list(EnvAgentComboStorage.all_pks())[0]
+        # )
+        st.session_state.env_agent_combo = EnvAgentComboStorage.find().all()[0]
         st.session_state.state = ActionState.IDLE
         st.session_state.env = None
         st.session_state.agents = None
@@ -84,10 +85,13 @@ def initialize_session_state() -> None:
         st.session_state.rewards = [0.0, 0.0]
         st.session_state.reasoning = ""
 
-    all_agents = [AgentProfile.get(id) for id in list(AgentProfile.all_pks())[:10]]
-    all_envs = [
-        EnvironmentProfile.get(id) for id in list(EnvironmentProfile.all_pks())[:10]
-    ]
+    all_agents = AgentProfile.find().all()[:10]
+    all_envs = EnvironmentProfile.find().all()[:10]
+    
+    # all_agents = [AgentProfile.get(id) for id in list(AgentProfile.all_pks())[:10]]
+    # all_envs = [
+    #     EnvironmentProfile.get(id) for id in list(EnvironmentProfile.all_pks())[:10]
+    # ]
 
     st.session_state.agent_mapping = [
         {get_full_name(agent_profile): agent_profile for agent_profile in all_agents}
