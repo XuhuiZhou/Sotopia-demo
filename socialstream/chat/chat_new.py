@@ -87,7 +87,7 @@ def initialize_session_state() -> None:
 
     all_agents = AgentProfile.find().all()[:10]
     all_envs = EnvironmentProfile.find().all()[:10]
-    
+
     # all_agents = [AgentProfile.get(id) for id in list(AgentProfile.all_pks())[:10]]
     # all_envs = [
     #     EnvironmentProfile.get(id) for id in list(EnvironmentProfile.all_pks())[:10]
