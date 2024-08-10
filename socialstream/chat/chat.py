@@ -18,7 +18,10 @@ from sotopia.envs.evaluators import (
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
 )
-from sotopia.envs.parallel import _agent_profile_to_friendabove_self
+from sotopia.envs.parallel import (
+    _agent_profile_to_friendabove_self,
+    render_text_for_agent,
+)
 from sotopia.messages import AgentAction
 
 from socialstream.utils import messageForRendering, render_for_humans
@@ -314,7 +317,7 @@ def chat_demo() -> None:
                 )
 
         st.markdown(
-            f"""**Now you are Agent {HUMAN_AGENT_IDX + 1}. Your goal: {goals_info[HUMAN_AGENT_IDX]}**"""
+            f"""**Now you are Agent {HUMAN_AGENT_IDX + 1}.** Your goal: {goals_info[HUMAN_AGENT_IDX]}"""
         )
 
     start_col, stop_col = st.columns(2)
@@ -452,9 +455,13 @@ def compose_agent_messages() -> list[str]:  # type: ignore
     agents = st.session_state.agents
 
     agent_to_render = [
-        _agent_profile_to_friendabove_self(agent.profile, agent_id)
+        render_text_for_agent(
+            raw_text=_agent_profile_to_friendabove_self(agent.profile, agent_id),
+            agent_id=HUMAN_AGENT_IDX,
+        )
         for agent_id, agent in enumerate(agents.values())
     ]
+    print(agent_to_render)
     return agent_to_render
 
 

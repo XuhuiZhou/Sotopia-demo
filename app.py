@@ -6,7 +6,6 @@ from sotopia.database import EpisodeLog
 from socialstream.chat import chat_demo
 from socialstream.rendering import rendering_demo
 
-
 DISPLAY_MODE = "Display Episodes"
 CHAT_MODE = "Chat with Model"
 st.set_page_config(page_title="SocialStream_Demo", page_icon="🧊", layout="wide")
