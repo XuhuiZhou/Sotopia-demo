@@ -6,7 +6,6 @@ from sotopia.database import EpisodeLog
 from socialstream.chat import chat_demo
 from socialstream.rendering import rendering_demo
 
-# os.environ["REDIS_OM_URL"] = st.secrets["REDIS_OM_URL"]
 print(os.environ["REDIS_OM_URL"])
 
 
