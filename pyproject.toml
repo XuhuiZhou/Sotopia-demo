@@ -1,23 +1,21 @@
 [tool.poetry]
-name = "haicosystemDemo"
+name = "socialstream"
 version = "0.0.1"
 description = "An demo"
-authors = ["Xuhui Zhou <zhouxuhui2018@gmail.com>"]
+authors = ["Zhe Su <suzhesz00@gmail.com>", "Xuhui Zhou <zhouxuhui2018@gmail.com>"]
 readme = "README.md"
-packages = [{include = "haicosystemDemo"}]
+packages = [{include = "socialstream"}]
 
 [tool.poetry.dependencies]
 python = ">=3.11, <3.13"
-sotopia = "0.0.11"
+sotopia = {git = "https://github.com/sotopia-lab/sotopia.git"}
 types-requests = "^2.31"
-haicosystem = { git = "https://github.com/XuhuiZhou/HAI-Cosys.git" }
 streamlit = "*"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "*"
 nbmake = "*"
 types-setuptools = "*"
-#haicosystem = { git = "https://github.com/XuhuiZhou/HAI-Cosys.git", branch = "feature/seperate_render_for_humans"}
 ruff = "*"
 mypy = "1.10.1"
 
