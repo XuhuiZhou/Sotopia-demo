@@ -6,8 +6,6 @@ from sotopia.database import EpisodeLog
 from socialstream.chat import chat_demo
 from socialstream.rendering import rendering_demo
 
-print(os.environ["REDIS_OM_URL"])
-
 
 DISPLAY_MODE = "Display Episodes"
 CHAT_MODE = "Chat with Model"
