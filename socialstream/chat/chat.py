@@ -73,9 +73,6 @@ def initialize_session_state() -> None:
         # if not st.session_state.active:
         st.session_state.conversation = []
         st.session_state.background = "Default Background"
-        # st.session_state.env_agent_combo = EnvAgentComboStorage.get(
-        #     list(EnvAgentComboStorage.all_pks())[0]
-        # )
         st.session_state.env_agent_combo = EnvAgentComboStorage.find().all()[0]
         st.session_state.state = ActionState.IDLE
         st.session_state.env = None
@@ -87,11 +84,6 @@ def initialize_session_state() -> None:
 
     all_agents = AgentProfile.find().all()[:10]
     all_envs = EnvironmentProfile.find().all()[:10]
-
-    # all_agents = [AgentProfile.get(id) for id in list(AgentProfile.all_pks())[:10]]
-    # all_envs = [
-    #     EnvironmentProfile.get(id) for id in list(EnvironmentProfile.all_pks())[:10]
-    # ]
 
     st.session_state.agent_mapping = [
         {get_full_name(agent_profile): agent_profile for agent_profile in all_agents}
@@ -116,7 +108,6 @@ def step(user_input: str | None = None) -> None:
                     action = AgentAction(action_type="leave", argument="")
                 case _:
                     action = AgentAction(action_type="none", argument="")
-
             print("Human output action: ", action)
         else:
             match st.session_state.state:
@@ -189,7 +180,6 @@ def step(user_input: str | None = None) -> None:
         case _:
             raise ValueError("Invalid state", st.session_state.state)
 
-    print("State after step: ", st.session_state.state)
     done = all(terminated.values())
 
 
@@ -270,7 +260,6 @@ def chat_demo() -> None:
                 disabled=st.session_state.active,
                 index=1,
             )
-        print(agent_choice_1, agent_choice_2)
         user_position = st.selectbox(
             "Which agent do you want to be?",
             [agent_choice_1, agent_choice_2],
@@ -323,23 +312,6 @@ def chat_demo() -> None:
                     f"""**Agent {agent_idx + 1} Background:** {agent_info}""",
                     unsafe_allow_html=True,
                 )
-                # st.text_area(
-                #     value=f"""**Agent {agent_idx + 1} Background:** {agent_info}Goal: {goals_info[agent_idx]}""",
-                #     label=f"Agent {agent_idx + 1} Background",
-                #     height=150
-                # )
-
-        # for agent_idx, agent_info in enumerate(agent_infos):
-        #     st.markdown(
-        #         f"""**Agent {agent_idx + 1} Background:** {agent_info}Goal: {goals_info[agent_idx]}""",
-        #         unsafe_allow_html=True,
-        #     )
-
-        # st.text_area(
-        #     value=f"""**Now you are Agent {HUMAN_AGENT_IDX + 1}. Your goal: {goals_info[HUMAN_AGENT_IDX]}**""",
-        #     label="Your Goal",
-        #     height=150
-        # )
 
         st.markdown(
             f"""**Now you are Agent {HUMAN_AGENT_IDX + 1}. Your goal: {goals_info[HUMAN_AGENT_IDX]}**"""
@@ -367,7 +339,6 @@ def chat_demo() -> None:
             if st.session_state.state == ActionState.MODEL_WAITING:
                 with st.spinner("Model acting..."):
                     step()  # model's turn
-            # st.rerun()
 
     with stop_col:
         stop_button = st.button("Stop", disabled=not st.session_state.active)
@@ -411,7 +382,6 @@ def chat_demo() -> None:
 
 
 def streamlit_rendering(messages: list[messageForRendering]) -> None:
-    # print(messages)
     agent1_name, agent2_name = list(st.session_state.agents.keys())[:2]
     agent_color_mapping = {
         agent1_name: "lightblue",
@@ -428,12 +398,6 @@ def streamlit_rendering(messages: list[messageForRendering]) -> None:
     else:
         avatar_mapping[agent1_name] = "🤖"
         avatar_mapping[agent2_name] = "👤"
-    print(avatar_mapping)
-
-    agent_color_mapping = {
-        "Agent 1": "lightblue",
-        "Agent 2": "green",
-    }
 
     role_mapping = {
         "Background Info": "background",
@@ -448,7 +412,6 @@ def streamlit_rendering(messages: list[messageForRendering]) -> None:
     }
 
     for index, message in enumerate(messages):
-        print(message)
         role = role_mapping.get(message["role"], "info")
         content = message["content"]
 
@@ -537,6 +500,7 @@ def set_settings(
             HUMAN_AGENT_IDX = agent_names.index(agent_name)
             break
     # HUMAN_AGENT_IDX = 0 if user_position == "First Agent" else 1
+    # TODO decide whether to use agent name of the index
     env, agents, environment_messages = get_env_agents(env_agent_combo)
 
     st.session_state.env = env
