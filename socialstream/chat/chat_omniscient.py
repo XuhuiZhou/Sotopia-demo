@@ -1,6 +1,4 @@
-import asyncio
 import json
-from functools import wraps
 from typing import cast
 
 import streamlit as st
@@ -24,50 +22,18 @@ from sotopia.envs.parallel import (
 )
 from sotopia.messages import AgentAction
 
-from socialstream.utils import messageForRendering, render_for_humans
-
-
-def async_to_sync(async_func) -> callable:
-    @wraps(async_func)
-    def sync_func(*args, **kwargs):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(async_func(*args, **kwargs))
-        loop.close()
-        return result
-
-    return sync_func
-
+from socialstream.utils import (
+    ActionState,
+    async_to_sync,
+    get_full_name,
+    messageForRendering,
+    print_current_speaker,
+    render_for_humans,
+)
 
 MODEL = "gpt-4o-mini"
 HUMAN_AGENT_IDX = 0
 POSITION_CHOICES = ["First Agent", "Second Agent"]
-
-
-class ActionState:
-    IDLE = 1
-    HUMAN_WAITING = 2
-    HUMAN_SPEAKING = 3
-    MODEL_WAITING = 4
-    MODEL_SPEAKING = 4
-    EVALUATION_WAITING = 5
-
-
-def print_current_speaker() -> None:
-    if st.session_state.state == ActionState.HUMAN_SPEAKING:
-        print("Human is speaking...")
-    elif st.session_state.state == ActionState.MODEL_SPEAKING:
-        print("Model is speaking...")
-    elif st.session_state.state == ActionState.HUMAN_WAITING:
-        print("Human is waiting...")
-    elif st.session_state.state == ActionState.EVALUATION_WAITING:
-        print("Evaluation is waiting...")
-    else:
-        print("Idle...")
-
-
-def get_full_name(agent_profile: AgentProfile) -> str:
-    return f"{agent_profile.first_name} {agent_profile.last_name}"
 
 
 def initialize_session_state(force_reload: bool = False) -> None:

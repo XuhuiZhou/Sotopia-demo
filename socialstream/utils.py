@@ -1,5 +1,8 @@
+import asyncio
+from functools import wraps
 from typing import TypedDict
 
+import streamlit as st
 from sotopia.database import AgentProfile, EnvironmentProfile, EpisodeLog
 
 
@@ -7,6 +10,32 @@ class messageForRendering(TypedDict):
     role: str
     type: str
     content: str
+
+
+class ActionState:
+    IDLE = 1
+    HUMAN_WAITING = 2
+    HUMAN_SPEAKING = 3
+    MODEL_WAITING = 4
+    MODEL_SPEAKING = 4
+    EVALUATION_WAITING = 5
+
+
+def get_full_name(agent_profile: AgentProfile) -> str:
+    return f"{agent_profile.first_name} {agent_profile.last_name}"
+
+
+def print_current_speaker() -> None:
+    if st.session_state.state == ActionState.HUMAN_SPEAKING:
+        print("Human is speaking...")
+    elif st.session_state.state == ActionState.MODEL_SPEAKING:
+        print("Model is speaking...")
+    elif st.session_state.state == ActionState.HUMAN_WAITING:
+        print("Human is waiting...")
+    elif st.session_state.state == ActionState.EVALUATION_WAITING:
+        print("Evaluation is waiting...")
+    else:
+        print("Idle...")
 
 
 class EnvAgentProfileCombo:
@@ -131,3 +160,15 @@ def render_for_humans(episode: EpisodeLog) -> list[messageForRendering]:
         )
 
     return messages_for_rendering
+
+
+def async_to_sync(async_func: callable) -> callable:
+    @wraps(async_func)
+    def sync_func(*args, **kwargs):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(async_func(*args, **kwargs))
+        loop.close()
+        return result
+
+    return sync_func

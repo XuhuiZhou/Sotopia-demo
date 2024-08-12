@@ -24,20 +24,7 @@ from sotopia.envs.parallel import (
 )
 from sotopia.messages import AgentAction
 
-from socialstream.utils import messageForRendering, render_for_humans
-
-
-def async_to_sync(async_func) -> callable:
-    @wraps(async_func)
-    def sync_func(*args, **kwargs):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        result = loop.run_until_complete(async_func(*args, **kwargs))
-        loop.close()
-        return result
-
-    return sync_func
-
+from socialstream.utils import async_to_sync, messageForRendering, render_for_humans
 
 MODEL = "gpt-4o-mini"
 HUMAN_AGENT_IDX = 0
