@@ -1,12 +1,18 @@
 from typing import TypedDict
 
-from sotopia.database import EpisodeLog
+from sotopia.database import AgentProfile, EnvironmentProfile, EpisodeLog
 
 
 class messageForRendering(TypedDict):
     role: str
     type: str
     content: str
+
+
+class EnvAgentProfileCombo:
+    def __init__(self, env: EnvironmentProfile, agents: list[AgentProfile]) -> None:
+        self.env = env
+        self.agents = agents
 
 
 def parse_reasoning(reasoning: str, num_agents: int) -> tuple[list[str], str]:
