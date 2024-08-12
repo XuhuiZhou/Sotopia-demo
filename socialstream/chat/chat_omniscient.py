@@ -70,7 +70,7 @@ def get_full_name(agent_profile: AgentProfile) -> str:
     return f"{agent_profile.first_name} {agent_profile.last_name}"
 
 
-def initialize_session_state() -> None:
+def initialize_session_state(force_reload: bool = False) -> None:
     all_agents = AgentProfile.find().all()[:10]
     all_envs = EnvironmentProfile.find().all()[:10]
     st.session_state.agent_mapping = [
@@ -80,8 +80,7 @@ def initialize_session_state() -> None:
         env_profile.codename: env_profile for env_profile in all_envs
     }
 
-    
-    if "active" not in st.session_state:
+    if "active" not in st.session_state or force_reload:
         st.session_state.active = False
         st.session_state.conversation = []
         st.session_state.background = "Default Background"
@@ -98,10 +97,9 @@ def initialize_session_state() -> None:
             agent_choice_2=get_full_name(all_agents[1]),
             scenario_choice=all_envs[0].codename,
             user_agent_name="PLACEHOLDER",
-            agent_names=[]   
+            agent_names=[],
         )
 
-    
 
 def step(user_input: str | None = None) -> None:
     env = st.session_state.env
@@ -196,9 +194,15 @@ def step(user_input: str | None = None) -> None:
 
     done = all(terminated.values())
 
+
 from sotopia.messages import Observation
+
 from socialstream.utils import EnvAgentProfileCombo
-def get_env_agents(env_agent_combo: EnvAgentProfileCombo) -> tuple[ParallelSotopiaEnv, Agents, dict[str, Observation]]:
+
+
+def get_env_agents(
+    env_agent_combo: EnvAgentProfileCombo,
+) -> tuple[ParallelSotopiaEnv, Agents, dict[str, Observation]]:
     environment_profile = env_agent_combo.env
     agent_profiles = env_agent_combo.agents
     agent_list = [
@@ -242,20 +246,23 @@ MODEL_LIST = [
 
 def chat_demo() -> None:
     initialize_session_state()
-    
+
     def choice_callback() -> None:
         if st.session_state.active:
             st.warning("Please stop the conversation first.")
             st.stop()
         global MODEL
         MODEL = st.session_state.model_choice
-        
+
         set_settings(
             agent_choice_1=st.session_state.agent_choice_1,
             agent_choice_2=st.session_state.agent_choice_2,
             scenario_choice=st.session_state.scenario_choice,
             user_agent_name=st.session_state.user_position,
-            agent_names=[st.session_state.agent_choice_1, st.session_state.agent_choice_2],
+            agent_names=[
+                st.session_state.agent_choice_1,
+                st.session_state.agent_choice_2,
+            ],
         )
 
     with st.expander("Create your scenario!", expanded=True):
@@ -274,7 +281,10 @@ def chat_demo() -> None:
             )
         with model_col:
             model_choice = st.selectbox(
-                "Choose a model:", MODEL_LIST, disabled=st.session_state.active, index=0,
+                "Choose a model:",
+                MODEL_LIST,
+                disabled=st.session_state.active,
+                index=0,
                 on_change=choice_callback,
                 key="model_choice",
             )
@@ -316,54 +326,22 @@ def chat_demo() -> None:
             )
             st.stop()
 
-        # if (
-        #     agent_choice_1
-        #     or agent_choice_2
-        #     or user_position
-        #     or scenario_choice
-        #     or model_choice
-        # ) and not st.session_state.active:
-        #     global MODEL
-        #     MODEL = model_choice
-        #     print(f"Setting settings with model {MODEL}...")
-        #     set_settings(
-        #         agent_choice_1,
-        #         agent_choice_2,
-        #         scenario_choice,
-        #         user_position,
-        #         [agent_choice_1, agent_choice_2],
-        #     )
-    
-    def edit_callback() -> None:
+    def edit_callback(reset_msgs: bool = False) -> None:
         env_profiles: EnvironmentProfile = st.session_state.env.profile
         env_profiles.scenario = st.session_state.edited_scenario
         agent_goals = [st.session_state[f"edited_goal_{i}"] for i in range(2)]
         env_profiles.agent_goals = agent_goals
-        
+
         print("Edited scenario: ", env_profiles.scenario)
         print("Edited goals: ", env_profiles.agent_goals)
-        
+
         env_agent_combo = EnvAgentProfileCombo(
             env=env_profiles,
             agents=[agent.profile for agent in st.session_state.agents.values()],
         )
-        env, agents, environment_messages = get_env_agents(env_agent_combo)
-
-        st.session_state.env = env
-        st.session_state.agents = agents
-        st.session_state.environment_messages = environment_messages
-        
-        st.session_state.messages = (
-            [
-                [
-                    ("Environment", agent_name, environment_messages[agent_name])
-                    for agent_name in env.agents
-                ]
-            ]
-            if st.session_state.messages == []
-            else st.session_state.messages
+        set_from_env_agent_profile_combo(
+            env_agent_combo=env_agent_combo, reset_msgs=reset_msgs
         )
-        
 
     with st.expander("Check your social task!", expanded=True):
         agent_infos = compose_agent_messages()
@@ -388,8 +366,8 @@ def chat_demo() -> None:
                     value=f"""{agent_info}""",
                     height=150,
                     disabled=st.session_state.active,
-                ) # TODO not supported yet!!
-        
+                )  # TODO not supported yet!!
+
         agent1_goal_col, agent2_goal_col = st.columns(2)
         agent_goal_cols = [agent1_goal_col, agent2_goal_col]
         for agent_idx, goal_info in enumerate(goals_info):
@@ -404,12 +382,28 @@ def chat_demo() -> None:
                     disabled=st.session_state.active,
                 )
 
+    def inactivate() -> None:
+        st.session_state.active = False
+
+    def activate() -> None:
+        st.session_state.active = True
+
+    def activate_and_start() -> None:
+        activate()
+        edit_callback(reset_msgs=True)
+
+    def stop_and_eval() -> None:
+        # inactivate()
+        if st.session_state != ActionState.IDLE:
+            st.session_state.state = ActionState.EVALUATION_WAITING
 
     start_col, stop_col = st.columns(2)
     with start_col:
-        start_button = st.button("Start", disabled=st.session_state.active)
+        start_button = st.button(
+            "Start", disabled=st.session_state.active, on_click=activate_and_start
+        )
         if start_button:
-            st.session_state.active = True
+            # st.session_state.active = True
             st.session_state.state = (
                 ActionState.HUMAN_WAITING
                 if HUMAN_AGENT_IDX == 0
@@ -421,9 +415,10 @@ def chat_demo() -> None:
                     step()  # model's turn
 
     with stop_col:
-        stop_button = st.button("Stop", disabled=not st.session_state.active)
+        stop_button = st.button(
+            "Stop", disabled=not st.session_state.active, on_click=stop_and_eval
+        )
         if stop_button and st.session_state.active:
-            st.session_state.active = False
             st.session_state.state = ActionState.EVALUATION_WAITING
 
     with st.form("user_input", clear_on_submit=True):
@@ -562,28 +557,9 @@ def render_messages() -> list[messageForRendering]:
     return rendered_messages
 
 
-def set_settings(
-    agent_choice_1: str,
-    agent_choice_2: str,
-    scenario_choice: str,
-    user_agent_name: str,
-    agent_names: list[str],
-    reset_msgs: bool = False,
-) -> None:  # type: ignore
-    global HUMAN_AGENT_IDX
-    scenarios = st.session_state.env_mapping
-    agent_map_1, agent_map_2 = st.session_state.agent_mapping
-
-    for agent_name in agent_names:
-        if agent_name == user_agent_name:
-            HUMAN_AGENT_IDX = agent_names.index(agent_name)
-            break
-    
-    env_agent_combo = EnvAgentProfileCombo(
-        env=scenarios[scenario_choice],
-        agents=[agent_map_1[agent_choice_1], agent_map_2[agent_choice_2]],
-    )
-    
+def set_from_env_agent_profile_combo(
+    env_agent_combo: EnvAgentProfileCombo, reset_msgs: bool = False
+) -> None:
     env, agents, environment_messages = get_env_agents(env_agent_combo)
 
     st.session_state.env = env
@@ -602,4 +578,30 @@ def set_settings(
         ]
         if st.session_state.messages == []
         else st.session_state.messages
+    )
+
+
+def set_settings(
+    agent_choice_1: str,
+    agent_choice_2: str,
+    scenario_choice: str,
+    user_agent_name: str,
+    agent_names: list[str],
+    reset_msgs: bool = False,
+) -> None:  # type: ignore
+    global HUMAN_AGENT_IDX
+    scenarios = st.session_state.env_mapping
+    agent_map_1, agent_map_2 = st.session_state.agent_mapping
+
+    for agent_name in agent_names:
+        if agent_name == user_agent_name:
+            HUMAN_AGENT_IDX = agent_names.index(agent_name)
+            break
+
+    env_agent_combo = EnvAgentProfileCombo(
+        env=scenarios[scenario_choice],
+        agents=[agent_map_1[agent_choice_1], agent_map_2[agent_choice_2]],
+    )
+    set_from_env_agent_profile_combo(
+        env_agent_combo=env_agent_combo, reset_msgs=reset_msgs
     )
