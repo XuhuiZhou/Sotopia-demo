@@ -2,7 +2,6 @@ import json
 from typing import cast
 
 import streamlit as st
-from sotopia.agents import Agents, LLMAgent
 from sotopia.database import (
     AgentProfile,
     EnvAgentComboStorage,
@@ -10,12 +9,6 @@ from sotopia.database import (
     EpisodeLog,
 )
 from sotopia.envs import ParallelSotopiaEnv
-from sotopia.envs.evaluators import (
-    EvaluationForTwoAgents,
-    ReachGoalLLMEvaluator,
-    RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
-)
 from sotopia.envs.parallel import (
     _agent_profile_to_friendabove_self,
     render_text_for_agent,
@@ -23,191 +16,19 @@ from sotopia.envs.parallel import (
 from sotopia.messages import AgentAction
 
 from socialstream.utils import (
+    MODEL_LIST,
     ActionState,
+    EnvAgentProfileCombo,
     async_to_sync,
     get_full_name,
+    initialize_session_state,
     messageForRendering,
     print_current_speaker,
     render_for_humans,
+    set_from_env_agent_profile_combo,
+    set_settings,
+    step,
 )
-
-MODEL = "gpt-4o-mini"
-HUMAN_AGENT_IDX = 0
-POSITION_CHOICES = ["First Agent", "Second Agent"]
-
-
-def initialize_session_state(force_reload: bool = False) -> None:
-    all_agents = AgentProfile.find().all()[:10]
-    all_envs = EnvironmentProfile.find().all()[:10]
-    st.session_state.agent_mapping = [
-        {get_full_name(agent_profile): agent_profile for agent_profile in all_agents}
-    ] * 2
-    st.session_state.env_mapping = {
-        env_profile.codename: env_profile for env_profile in all_envs
-    }
-
-    if "active" not in st.session_state or force_reload:
-        st.session_state.active = False
-        st.session_state.conversation = []
-        st.session_state.background = "Default Background"
-        st.session_state.env_agent_combo = EnvAgentComboStorage.find().all()[0]
-        st.session_state.state = ActionState.IDLE
-        st.session_state.env = None
-        st.session_state.agents = None
-        st.session_state.environment_messages = None
-        st.session_state.messages = []
-        st.session_state.rewards = [0.0, 0.0]
-        st.session_state.reasoning = ""
-        set_settings(
-            agent_choice_1=get_full_name(all_agents[0]),
-            agent_choice_2=get_full_name(all_agents[1]),
-            scenario_choice=all_envs[0].codename,
-            user_agent_name="PLACEHOLDER",
-            agent_names=[],
-        )
-
-
-def step(user_input: str | None = None) -> None:
-    env = st.session_state.env
-    print(env.profile)
-    print(env.agents)
-    for agent_name in env.agents:
-        print(st.session_state.agents[agent_name].goal)
-
-    agent_messages: dict[str, AgentAction] = dict()
-    actions = []
-    for agent_idx, agent_name in enumerate(env.agents):
-        if agent_idx == HUMAN_AGENT_IDX:
-            # if this is the human's turn (actually this is determined by the action_mask)
-            match st.session_state.state:
-                case ActionState.HUMAN_SPEAKING:
-                    action = AgentAction(action_type="speak", argument=user_input)
-                case ActionState.EVALUATION_WAITING:
-                    action = AgentAction(action_type="leave", argument="")
-                case _:
-                    action = AgentAction(action_type="none", argument="")
-            print("Human output action: ", action)
-        else:
-            match st.session_state.state:
-                case ActionState.HUMAN_SPEAKING:
-                    action = AgentAction(action_type="none", argument="")
-                case ActionState.MODEL_SPEAKING:
-                    action = async_to_sync(st.session_state.agents[agent_name].aact)(
-                        st.session_state.environment_messages[agent_name]
-                    )
-                case ActionState.EVALUATION_WAITING:
-                    action = AgentAction(action_type="leave", argument="")
-                case _:
-                    action = AgentAction(action_type="none", argument="")
-            print("Model output action: ", action)
-
-        actions.append(action)
-    actions = cast(list[AgentAction], actions)
-
-    for idx, agent_name in enumerate(st.session_state.env.agents):
-        agent_messages[agent_name] = actions[idx]
-        st.session_state.messages[-1].append(
-            (agent_name, "Environment", agent_messages[agent_name])
-        )
-
-    # send agent messages to environment
-    (
-        st.session_state.environment_messages,
-        rewards_in_turn,
-        terminated,
-        ___,
-        info,
-    ) = async_to_sync(st.session_state.env.astep)(agent_messages)
-    st.session_state.messages.append(
-        [
-            (
-                "Environment",
-                agent_name,
-                st.session_state.environment_messages[agent_name],
-            )
-            for agent_name in st.session_state.env.agents
-        ]
-    )
-
-    done = all(terminated.values())
-    if done:
-        print("Conversation ends...")
-        st.session_state.state = ActionState.IDLE
-        st.session_state.active = False
-        st.session_state.done = False
-
-        agent_list = list(st.session_state.agents.values())
-
-        st.session_state.rewards = [
-            info[agent_name]["complete_rating"]
-            for agent_name in st.session_state.env.agents
-        ]
-        st.session_state.reasoning = info[st.session_state.env.agents[0]]["comments"]
-        st.session_state.rewards_prompt = info["rewards_prompt"]["overall_prompt"]
-
-    match st.session_state.state:
-        case ActionState.HUMAN_SPEAKING:
-            st.session_state.state = ActionState.MODEL_WAITING
-        case ActionState.MODEL_SPEAKING:
-            st.session_state.state = ActionState.HUMAN_WAITING
-        case ActionState.EVALUATION_WAITING:
-            st.session_state.state = ActionState.IDLE
-            st.session_state.active = False
-        case ActionState.IDLE:
-            st.session_state.state = ActionState.IDLE
-        case _:
-            raise ValueError("Invalid state", st.session_state.state)
-
-    done = all(terminated.values())
-
-
-from sotopia.messages import Observation
-
-from socialstream.utils import EnvAgentProfileCombo
-
-
-def get_env_agents(
-    env_agent_combo: EnvAgentProfileCombo,
-) -> tuple[ParallelSotopiaEnv, Agents, dict[str, Observation]]:
-    environment_profile = env_agent_combo.env
-    agent_profiles = env_agent_combo.agents
-    agent_list = [
-        LLMAgent(agent_profile=agent_profile, model_name=MODEL)
-        for agent_profile in agent_profiles
-    ]
-    for idx, goal in enumerate(environment_profile.agent_goals):
-        agent_list[idx].goal = goal
-
-    agents = Agents({agent.agent_name: agent for agent in agent_list})
-    env = ParallelSotopiaEnv(
-        action_order="round-robin",
-        model_name=MODEL,
-        evaluators=[
-            RuleBasedTerminatedEvaluator(max_turn_number=20, max_stale_turn=2),
-        ],
-        terminal_evaluators=[
-            ReachGoalLLMEvaluator(
-                "gpt-4o",
-                EvaluationForTwoAgents[SotopiaDimensions],
-            ),
-        ],
-        env_profile=environment_profile,
-    )
-
-    environment_messages = env.reset(agents=agents, omniscient=False)
-    agents.reset()
-
-    return env, agents, environment_messages
-
-
-MODEL_LIST = [
-    "gpt-4o-mini",
-    "gpt-4o",
-    "gpt-4",
-    "together_ai/meta-llama/Llama-3-70b-chat-hf",
-    "together_ai/meta-llama/Llama-3-8b-chat-hf",
-    "together_ai/mistralai/Mixtral-8x22B-Instruct-v0.1",
-]
 
 
 def chat_demo() -> None:
@@ -217,8 +38,12 @@ def chat_demo() -> None:
         if st.session_state.active:
             st.warning("Please stop the conversation first.")
             st.stop()
-        global MODEL
-        MODEL = st.session_state.model_choice
+        # global MODEL
+        # MODEL = st.session_state.model_choice
+        st.session_state.agent_models = [
+            st.session_state.agent1_model_choice,
+            st.session_state.agent2_model_choice,
+        ]
 
         set_settings(
             agent_choice_1=st.session_state.agent_choice_1,
@@ -235,24 +60,35 @@ def chat_demo() -> None:
         scenarios = st.session_state.env_mapping
         agent_list_1, agent_list_2 = st.session_state.agent_mapping
 
-        scenario_col, model_col = st.columns(2)
-        with scenario_col:
-            scenario_choice = st.selectbox(
-                "Choose a scenario:",
-                scenarios.keys(),
-                disabled=st.session_state.active,
-                index=0,
-                on_change=choice_callback,
-                key="scenario_choice",
-            )
-        with model_col:
-            model_choice = st.selectbox(
+        # scenario_col = st.columns(1)
+        # with scenario_col:
+        st.selectbox(
+            "Choose a scenario:",
+            scenarios.keys(),
+            disabled=st.session_state.active,
+            index=0,
+            on_change=choice_callback,
+            key="scenario_choice",
+        )
+
+        model_col_1, model_col_2 = st.columns(2)
+        with model_col_1:
+            st.selectbox(
                 "Choose a model:",
                 MODEL_LIST,
                 disabled=st.session_state.active,
                 index=0,
                 on_change=choice_callback,
-                key="model_choice",
+                key="agent1_model_choice",
+            )
+        with model_col_2:
+            st.selectbox(
+                "Choose a model for agent 2:",
+                MODEL_LIST,
+                disabled=st.session_state.active,
+                index=0,
+                on_change=choice_callback,
+                key="agent2_model_choice",
             )
 
         agent_col1, agent_col2 = st.columns(2)
@@ -372,7 +208,7 @@ def chat_demo() -> None:
             # st.session_state.active = True
             st.session_state.state = (
                 ActionState.HUMAN_WAITING
-                if HUMAN_AGENT_IDX == 0
+                if st.session_state.human_agent_idx == 0
                 else ActionState.MODEL_WAITING
             )
 
@@ -433,7 +269,7 @@ def streamlit_rendering(messages: list[messageForRendering]) -> None:
         "env": "🌍",
         "obs": "🌍",
     }
-    if HUMAN_AGENT_IDX == 0:
+    if st.session_state.human_agent_idx == 0:
         avatar_mapping[agent1_name] = "👤"
         avatar_mapping[agent2_name] = "🤖"
     else:
@@ -495,7 +331,7 @@ def compose_agent_messages() -> list[str]:  # type: ignore
     agent_to_render = [
         render_text_for_agent(
             raw_text=_agent_profile_to_friendabove_self(agent.profile, agent_id),
-            agent_id=HUMAN_AGENT_IDX,
+            agent_id=st.session_state.human_agent_idx,
         )
         for agent_id, agent in enumerate(agents.values())
     ]
@@ -521,53 +357,3 @@ def render_messages() -> list[messageForRendering]:
     )
     rendered_messages = render_for_humans(epilog)
     return rendered_messages
-
-
-def set_from_env_agent_profile_combo(
-    env_agent_combo: EnvAgentProfileCombo, reset_msgs: bool = False
-) -> None:
-    env, agents, environment_messages = get_env_agents(env_agent_combo)
-
-    st.session_state.env = env
-    st.session_state.agents = agents
-    st.session_state.environment_messages = environment_messages
-    if reset_msgs:
-        st.session_state.messages = []
-        st.session_state.reasoning = ""
-        st.session_state.rewards = [0.0, 0.0]
-    st.session_state.messages = (
-        [
-            [
-                ("Environment", agent_name, environment_messages[agent_name])
-                for agent_name in env.agents
-            ]
-        ]
-        if st.session_state.messages == []
-        else st.session_state.messages
-    )
-
-
-def set_settings(
-    agent_choice_1: str,
-    agent_choice_2: str,
-    scenario_choice: str,
-    user_agent_name: str,
-    agent_names: list[str],
-    reset_msgs: bool = False,
-) -> None:  # type: ignore
-    global HUMAN_AGENT_IDX
-    scenarios = st.session_state.env_mapping
-    agent_map_1, agent_map_2 = st.session_state.agent_mapping
-
-    for agent_name in agent_names:
-        if agent_name == user_agent_name:
-            HUMAN_AGENT_IDX = agent_names.index(agent_name)
-            break
-
-    env_agent_combo = EnvAgentProfileCombo(
-        env=scenarios[scenario_choice],
-        agents=[agent_map_1[agent_choice_1], agent_map_2[agent_choice_2]],
-    )
-    set_from_env_agent_profile_combo(
-        env_agent_combo=env_agent_combo, reset_msgs=reset_msgs
-    )

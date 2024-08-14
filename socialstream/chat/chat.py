@@ -24,7 +24,12 @@ from sotopia.envs.parallel import (
 )
 from sotopia.messages import AgentAction
 
-from socialstream.utils import async_to_sync, messageForRendering, render_for_humans
+from socialstream.utils import (
+    async_to_sync,
+    initialize_session_state,
+    messageForRendering,
+    render_for_humans,
+)
 
 MODEL = "gpt-4o-mini"
 HUMAN_AGENT_IDX = 0
@@ -57,30 +62,30 @@ def get_full_name(agent_profile: AgentProfile) -> str:
     return f"{agent_profile.first_name} {agent_profile.last_name}"
 
 
-def initialize_session_state() -> None:
-    if "active" not in st.session_state:
-        st.session_state.active = False
-        # if not st.session_state.active:
-        st.session_state.conversation = []
-        st.session_state.background = "Default Background"
-        st.session_state.env_agent_combo = EnvAgentComboStorage.find().all()[0]
-        st.session_state.state = ActionState.IDLE
-        st.session_state.env = None
-        st.session_state.agents = None
-        st.session_state.environment_messages = None
-        st.session_state.messages = []
-        st.session_state.rewards = [0.0, 0.0]
-        st.session_state.reasoning = ""
+# def initialize_session_state() -> None:
+#     if "active" not in st.session_state:
+#         st.session_state.active = False
+#         # if not st.session_state.active:
+#         st.session_state.conversation = []
+#         st.session_state.background = "Default Background"
+#         st.session_state.env_agent_combo = EnvAgentComboStorage.find().all()[0]
+#         st.session_state.state = ActionState.IDLE
+#         st.session_state.env = None
+#         st.session_state.agents = None
+#         st.session_state.environment_messages = None
+#         st.session_state.messages = []
+#         st.session_state.rewards = [0.0, 0.0]
+#         st.session_state.reasoning = ""
 
-    all_agents = AgentProfile.find().all()[:10]
-    all_envs = EnvironmentProfile.find().all()[:10]
+#     all_agents = AgentProfile.find().all()[:10]
+#     all_envs = EnvironmentProfile.find().all()[:10]
 
-    st.session_state.agent_mapping = [
-        {get_full_name(agent_profile): agent_profile for agent_profile in all_agents}
-    ] * 2
-    st.session_state.env_mapping = {
-        env_profile.codename: env_profile for env_profile in all_envs
-    }
+#     st.session_state.agent_mapping = [
+#         {get_full_name(agent_profile): agent_profile for agent_profile in all_agents}
+#     ] * 2
+#     st.session_state.env_mapping = {
+#         env_profile.codename: env_profile for env_profile in all_envs
+#     }
 
 
 def step(user_input: str | None = None) -> None:
