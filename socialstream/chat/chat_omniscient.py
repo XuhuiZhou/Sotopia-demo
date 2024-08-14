@@ -44,6 +44,8 @@ def chat_demo() -> None:
             st.session_state.agent1_model_choice,
             st.session_state.agent2_model_choice,
         ]
+        st.session_state.editable = st.session_state.edit_scenario
+        print("Editable: ", st.session_state.editable)
 
         set_settings(
             agent_choice_1=st.session_state.agent_choice_1,
@@ -71,7 +73,7 @@ def chat_demo() -> None:
             key="scenario_choice",
         )
 
-        model_col_1, model_col_2 = st.columns(2)
+        model_col_1, model_col_2 = st.columns(2) # TODO maybe we do not need this
         with model_col_1:
             st.selectbox(
                 "Choose a model:",
@@ -110,18 +112,26 @@ def chat_demo() -> None:
                 on_change=choice_callback,
                 key="agent_choice_2",
             )
-        user_position = st.selectbox(
-            "Which agent do you want to be?",
-            [agent_choice_1, agent_choice_2],
-            disabled=st.session_state.active,
-            on_change=choice_callback,
-            key="user_position",
-        )
-        # user_position = st.selectbox(
-        #     "Do you want to be the first or second agent?",
-        #     POSITION_CHOICES,
-        #     disabled=st.session_state.active,
-        # )
+
+        user_col, editable_col = st.columns(2)
+        with user_col:
+            st.selectbox(
+                "Which agent do you want to be?",
+                [agent_choice_1, agent_choice_2],
+                disabled=st.session_state.active,
+                on_change=choice_callback,
+                key="user_position",
+            )
+
+        with editable_col:
+            st.checkbox(
+                "Make the scenario editable",
+                key="edit_scenario",
+                on_change=choice_callback,
+                disabled=st.session_state.active,
+            )
+            # TODO changing from non-editable to editable will discard the edit made
+
         if agent_choice_1 == agent_choice_2:
             st.warning(
                 "The two agents cannot be the same. Please select different agents."
@@ -155,7 +165,7 @@ def chat_demo() -> None:
             height=150,
             on_change=edit_callback,
             key="edited_scenario",
-            disabled=st.session_state.active,
+            disabled=st.session_state.active or not st.session_state.editable,
         )
 
         agent1_col, agent2_col = st.columns(2)
@@ -167,7 +177,7 @@ def chat_demo() -> None:
                     label=f"Change the background info for Agent {agent_idx + 1} here:",
                     value=f"""{agent_info}""",
                     height=150,
-                    disabled=st.session_state.active,
+                    disabled=st.session_state.active or not st.session_state.editable,
                 )  # TODO not supported yet!!
 
         agent1_goal_col, agent2_goal_col = st.columns(2)
@@ -181,7 +191,7 @@ def chat_demo() -> None:
                     height=150,
                     key=f"edited_goal_{agent_idx}",
                     on_change=edit_callback,
-                    disabled=st.session_state.active,
+                    disabled=st.session_state.active or not st.session_state.editable,
                 )
 
     def inactivate() -> None:

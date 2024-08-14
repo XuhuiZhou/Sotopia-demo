@@ -199,6 +199,7 @@ def async_to_sync(async_func: callable) -> callable:
 
 
 def initialize_session_state(force_reload: bool = False) -> None:
+    # TODO initialize a preview of the scenario
     all_agents = AgentProfile.find().all()[:10]
     all_envs = EnvironmentProfile.find().all()[:10]
     st.session_state.agent_mapping = [
