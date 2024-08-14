@@ -17,6 +17,11 @@ from sotopia.envs.evaluators import (
     RuleBasedTerminatedEvaluator,
     SotopiaDimensions,
 )
+from sotopia.envs.parallel import (
+    _agent_profile_to_friendabove_self,
+    render_text_for_agent,
+    render_text_for_environment,
+)
 from sotopia.messages import AgentAction, Observation
 
 
@@ -198,6 +203,10 @@ def async_to_sync(async_func: callable) -> callable:
     return sync_func
 
 
+def get_abstract(description: str) -> str:
+    return " ".join(description.split()[:50]) + "..."
+
+
 def initialize_session_state(force_reload: bool = False) -> None:
     # TODO initialize a preview of the scenario
     all_agents = AgentProfile.find().all()[:10]
@@ -207,6 +216,12 @@ def initialize_session_state(force_reload: bool = False) -> None:
     ] * 2
     st.session_state.env_mapping = {
         env_profile.codename: env_profile for env_profile in all_envs
+    }
+    st.session_state.env_description_mapping = {
+        env_profile.codename: get_abstract(
+            render_text_for_environment(env_profile.scenario)
+        )
+        for env_profile in all_envs
     }
 
     if "active" not in st.session_state or force_reload:

@@ -62,18 +62,24 @@ def chat_demo() -> None:
         scenarios = st.session_state.env_mapping
         agent_list_1, agent_list_2 = st.session_state.agent_mapping
 
-        # scenario_col = st.columns(1)
-        # with scenario_col:
-        st.selectbox(
-            "Choose a scenario:",
-            scenarios.keys(),
-            disabled=st.session_state.active,
-            index=0,
-            on_change=choice_callback,
-            key="scenario_choice",
-        )
+        scenario_col, scenario_desc_col = st.columns(2)
+        with scenario_col:
+            st.selectbox(
+                "Choose a scenario:",
+                scenarios.keys(),
+                disabled=st.session_state.active,
+                index=0,
+                on_change=choice_callback,
+                key="scenario_choice",
+            )
 
-        model_col_1, model_col_2 = st.columns(2) # TODO maybe we do not need this
+        with scenario_desc_col:
+            st.markdown(
+                f"""**Scenario Description:** {st.session_state.env_description_mapping[st.session_state.scenario_choice]}""",
+                unsafe_allow_html=True,
+            )
+
+        model_col_1, model_col_2 = st.columns(2)  # TODO maybe we do not need this
         with model_col_1:
             st.selectbox(
                 "Choose a model:",
