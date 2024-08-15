@@ -1,4 +1,5 @@
 import json
+import time
 from typing import cast
 
 import streamlit as st
@@ -16,7 +17,9 @@ from sotopia.envs.parallel import (
 from sotopia.messages import AgentAction
 
 from socialstream.utils import (
+    HUMAN_MODEL_NAME,
     MODEL_LIST,
+    WAIT_STATE,
     ActionState,
     EnvAgentProfileCombo,
     async_to_sync,
@@ -38,8 +41,15 @@ def chat_demo() -> None:
         if st.session_state.active:
             st.warning("Please stop the conversation first.")
             st.stop()
-        # global MODEL
-        # MODEL = st.session_state.model_choice
+
+        agent_choice_1 = st.session_state.agent_choice_1
+        agent_choice_2 = st.session_state.agent_choice_2
+        if agent_choice_1 == agent_choice_2:
+            st.warning(
+                "The two agents cannot be the same. Please select different agents."
+            )
+            st.stop()  # BUG: When the error is triggered the whole page will be demaged
+
         st.session_state.agent_models = [
             st.session_state.agent1_model_choice,
             st.session_state.agent2_model_choice,
@@ -48,15 +58,23 @@ def chat_demo() -> None:
         print("Editable: ", st.session_state.editable)
 
         set_settings(
-            agent_choice_1=st.session_state.agent_choice_1,
-            agent_choice_2=st.session_state.agent_choice_2,
+            agent_choice_1=agent_choice_1,
+            agent_choice_2=agent_choice_2,
             scenario_choice=st.session_state.scenario_choice,
-            user_agent_name=st.session_state.user_position,
+            user_agent_name="PLACEHOLDER",
             agent_names=[
                 st.session_state.agent_choice_1,
                 st.session_state.agent_choice_2,
             ],
         )
+
+    st.checkbox(
+        "Make the scenario editable",
+        key="edit_scenario",
+        on_change=choice_callback,
+        disabled=st.session_state.active,
+    )
+    # TODO changing from non-editable to editable will discard the edit made
 
     with st.expander("Create your scenario!", expanded=True):
         scenarios = st.session_state.env_mapping
@@ -79,26 +97,6 @@ def chat_demo() -> None:
                 unsafe_allow_html=True,
             )
 
-        model_col_1, model_col_2 = st.columns(2)  # TODO maybe we do not need this
-        with model_col_1:
-            st.selectbox(
-                "Choose a model:",
-                MODEL_LIST,
-                disabled=st.session_state.active,
-                index=0,
-                on_change=choice_callback,
-                key="agent1_model_choice",
-            )
-        with model_col_2:
-            st.selectbox(
-                "Choose a model for agent 2:",
-                MODEL_LIST,
-                disabled=st.session_state.active,
-                index=0,
-                on_change=choice_callback,
-                key="agent2_model_choice",
-            )
-
         agent_col1, agent_col2 = st.columns(2)
         with agent_col1:
             agent_choice_1 = st.selectbox(
@@ -119,30 +117,33 @@ def chat_demo() -> None:
                 key="agent_choice_2",
             )
 
-        user_col, editable_col = st.columns(2)
-        with user_col:
+        model_col_1, model_col_2 = st.columns(2)  # TODO maybe we do not need this
+        with model_col_1:
             st.selectbox(
-                "Which agent do you want to be?",
-                [agent_choice_1, agent_choice_2],
+                "Choose a model:",
+                MODEL_LIST,
                 disabled=st.session_state.active,
+                index=0,
                 on_change=choice_callback,
-                key="user_position",
+                key="agent1_model_choice",
+            )
+        with model_col_2:
+            st.selectbox(
+                "Choose a model for agent 2:",
+                MODEL_LIST,
+                disabled=st.session_state.active,
+                index=0,
+                on_change=choice_callback,
+                key="agent2_model_choice",
             )
 
-        with editable_col:
-            st.checkbox(
-                "Make the scenario editable",
-                key="edit_scenario",
-                on_change=choice_callback,
-                disabled=st.session_state.active,
-            )
-            # TODO changing from non-editable to editable will discard the edit made
-
-        if agent_choice_1 == agent_choice_2:
-            st.warning(
-                "The two agents cannot be the same. Please select different agents."
-            )
-            st.stop()
+        # st.selectbox(
+        #     "Which agent do you want to be?",
+        #     [agent_choice_1, agent_choice_2],
+        #     disabled=st.session_state.active,
+        #     on_change=choice_callback,
+        #     key="user_position",
+        # )
 
     def edit_callback(reset_msgs: bool = False) -> None:
         env_profiles: EnvironmentProfile = st.session_state.env.profile
@@ -222,15 +223,7 @@ def chat_demo() -> None:
         )
         if start_button:
             # st.session_state.active = True
-            st.session_state.state = (
-                ActionState.HUMAN_WAITING
-                if st.session_state.human_agent_idx == 0
-                else ActionState.MODEL_WAITING
-            )
-
-            if st.session_state.state == ActionState.MODEL_WAITING:
-                with st.spinner("Model acting..."):
-                    step()  # model's turn
+            st.session_state.state = ActionState.AGENT1_WAITING
 
     with stop_col:
         stop_button = st.button(
@@ -239,25 +232,47 @@ def chat_demo() -> None:
         if stop_button and st.session_state.active:
             st.session_state.state = ActionState.EVALUATION_WAITING
 
+    requires_agent_input = (
+        st.session_state.state == ActionState.AGENT1_WAITING
+        and st.session_state.agent_models[0] == HUMAN_MODEL_NAME
+    ) or (
+        st.session_state.state == ActionState.AGENT2_WAITING
+        and st.session_state.agent_models[1] == HUMAN_MODEL_NAME
+    )
+
+    requires_model_input = (
+        st.session_state.state == ActionState.AGENT1_WAITING
+        and st.session_state.agent_models[0] != HUMAN_MODEL_NAME
+    ) or (
+        st.session_state.state == ActionState.AGENT2_WAITING
+        and st.session_state.agent_models[1] != HUMAN_MODEL_NAME
+    )
+
+    action_taken: bool = False
+    print_current_speaker()
     with st.form("user_input", clear_on_submit=True):
         user_input = st.text_input("Enter your message here:", key="user_input")
+
         if st.form_submit_button(
             "Submit",
             use_container_width=True,
-            disabled=st.session_state.state != ActionState.HUMAN_WAITING,
+            disabled=not requires_agent_input,
         ):
-            with st.spinner("Human Acting..."):
-                st.session_state.state = ActionState.HUMAN_SPEAKING
-                print_current_speaker()
-                step(user_input=user_input)  # human's turn
-            with st.spinner("Model Acting..."):
-                step()  # model's turn
+            with st.spinner("Agent acting..."):
+                st.session_state.state = st.session_state.state + 1
+                step(user_input=user_input)
+                action_taken = True
+
+    if requires_model_input:
+        with st.spinner("Agent acting..."):
+            st.session_state.state = st.session_state.state + 1
+            step(user_input="")
+            action_taken = True
 
     if st.session_state.state == ActionState.EVALUATION_WAITING:
         print("Evaluating...")
         with st.spinner("Evaluating..."):
             step()
-            st.rerun()
 
     messages = render_messages()
     tag_for_eval = ["Agent 1", "Agent 2", "General"]
@@ -273,6 +288,11 @@ def chat_demo() -> None:
         # a small bug: when there is a agent not saying anything there will be no separate evaluation for that agent
         streamlit_rendering(evaluation)
 
+    if action_taken:
+        time.sleep(3)  # sleep for a while to prevent running too fast
+        # TODO the problem is here, if the rerun is too fast then the message is not rendering
+        st.rerun()
+
 
 def streamlit_rendering(messages: list[messageForRendering]) -> None:
     agent1_name, agent2_name = list(st.session_state.agents.keys())[:2]
@@ -285,12 +305,21 @@ def streamlit_rendering(messages: list[messageForRendering]) -> None:
         "env": "🌍",
         "obs": "🌍",
     }
-    if st.session_state.human_agent_idx == 0:
-        avatar_mapping[agent1_name] = "👤"
-        avatar_mapping[agent2_name] = "🤖"
-    else:
-        avatar_mapping[agent1_name] = "🤖"
-        avatar_mapping[agent2_name] = "👤"
+
+    agent_names = [agent1_name, agent2_name]
+    avatar_mapping = {
+        agent_name: "👤"
+        if st.session_state.agent_models[idx] == HUMAN_MODEL_NAME
+        else "🤖"
+        for idx, agent_name in enumerate(agent_names)
+    }  # TODO maybe change the avatar because all bot/human will cause confusion
+
+    # if st.session_state.human_agent_idx == 0:
+    #     avatar_mapping[agent1_name] = "👤"
+    #     avatar_mapping[agent2_name] = "🤖"
+    # else:
+    #     avatar_mapping[agent1_name] = "🤖"
+    #     avatar_mapping[agent2_name] = "👤"
 
     role_mapping = {
         "Background Info": "background",

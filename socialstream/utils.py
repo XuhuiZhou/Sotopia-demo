@@ -31,6 +31,7 @@ class messageForRendering(TypedDict):
     content: str
 
 
+HUMAN_MODEL_NAME = "human"
 MODEL_LIST = [
     "gpt-4o-mini",
     "gpt-4o",
@@ -38,10 +39,11 @@ MODEL_LIST = [
     "together_ai/meta-llama/Llama-3-70b-chat-hf",
     "together_ai/meta-llama/Llama-3-8b-chat-hf",
     "together_ai/mistralai/Mixtral-8x22B-Instruct-v0.1",
+    HUMAN_MODEL_NAME,
 ]
 
 
-class ActionState:
+class ActionState_v0:
     IDLE = 1
     HUMAN_WAITING = 2
     HUMAN_SPEAKING = 3
@@ -50,21 +52,48 @@ class ActionState:
     EVALUATION_WAITING = 5
 
 
+class ActionState:
+    IDLE = 1
+    AGENT1_WAITING = 2
+    AGENT1_SPEAKING = 3
+    AGENT2_WAITING = 4
+    AGENT2_SPEAKING = 5
+    EVALUATION_WAITING = 6
+
+
+WAIT_STATE: list[int] = [ActionState.AGENT1_WAITING, ActionState.AGENT2_WAITING]
+SPEAK_STATE: list[int] = [ActionState.AGENT1_SPEAKING, ActionState.AGENT2_SPEAKING]
+
+
 def get_full_name(agent_profile: AgentProfile) -> str:
     return f"{agent_profile.first_name} {agent_profile.last_name}"
 
 
 def print_current_speaker() -> None:
-    if st.session_state.state == ActionState.HUMAN_SPEAKING:
-        print("Human is speaking...")
-    elif st.session_state.state == ActionState.MODEL_SPEAKING:
-        print("Model is speaking...")
-    elif st.session_state.state == ActionState.HUMAN_WAITING:
-        print("Human is waiting...")
-    elif st.session_state.state == ActionState.EVALUATION_WAITING:
-        print("Evaluation is waiting...")
-    else:
-        print("Idle...")
+    match st.session_state.state:
+        case ActionState.AGENT1_SPEAKING:
+            print("Agent 1 is speaking...")
+        case ActionState.AGENT2_SPEAKING:
+            print("Agent 2 is speaking...")
+        case ActionState.AGENT1_WAITING:
+            print("Agent 1 is waiting...")
+        case ActionState.AGENT2_WAITING:
+            print("Agent 2 is waiting...")
+        case ActionState.EVALUATION_WAITING:
+            print("Evaluation is waiting...")
+
+
+# def print_current_speaker_v0() -> None:
+#     if st.session_state.state == ActionState.HUMAN_SPEAKING:
+#         print("Human is speaking...")
+#     elif st.session_state.state == ActionState.MODEL_SPEAKING:
+#         print("Model is speaking...")
+#     elif st.session_state.state == ActionState.HUMAN_WAITING:
+#         print("Human is waiting...")
+#     elif st.session_state.state == ActionState.EVALUATION_WAITING:
+#         print("Evaluation is waiting...")
+#     else:
+#         print("Idle...")
 
 
 class EnvAgentProfileCombo:
@@ -323,10 +352,10 @@ def set_settings(
     scenarios = st.session_state.env_mapping
     agent_map_1, agent_map_2 = st.session_state.agent_mapping
 
-    for agent_name in agent_names:
-        if agent_name == user_agent_name:
-            st.session_state.human_agent_idx = agent_names.index(agent_name)
-            break
+    # for agent_name in agent_names:
+    #     if agent_name == user_agent_name:
+    #         st.session_state.human_agent_idx = agent_names.index(agent_name)
+    #         break
 
     env_agent_combo = EnvAgentProfileCombo(
         env=scenarios[scenario_choice],
@@ -337,6 +366,9 @@ def set_settings(
     )
 
 
+from typing import Optional
+
+
 def step(user_input: str | None = None) -> None:
     env = st.session_state.env
     print(env.profile)
@@ -344,32 +376,42 @@ def step(user_input: str | None = None) -> None:
     for agent_name in env.agents:
         print(st.session_state.agents[agent_name].goal)
 
+    def act_function(user_input: Optional[str], is_human: bool) -> AgentAction:
+        assert user_input is not None or not is_human, "User input is required"
+        if is_human:
+            return AgentAction(action_type="speak", argument=user_input)
+        else:
+            return async_to_sync(st.session_state.agents[agent_name].aact)(
+                st.session_state.environment_messages[agent_name]
+            )  # type: ignore
+
     agent_messages: dict[str, AgentAction] = dict()
     actions = []
+    # AGENT1_WAITING -> AGENT1_SPEAKING
     for agent_idx, agent_name in enumerate(env.agents):
-        if agent_idx == st.session_state.human_agent_idx:
-            # if this is the human's turn (actually this is determined by the action_mask)
-            match st.session_state.state:
-                case ActionState.HUMAN_SPEAKING:
-                    action = AgentAction(action_type="speak", argument=user_input)
-                case ActionState.EVALUATION_WAITING:
-                    action = AgentAction(action_type="leave", argument="")
-                case _:
-                    action = AgentAction(action_type="none", argument="")
-            print("Human output action: ", action)
-        else:
-            match st.session_state.state:
-                case ActionState.HUMAN_SPEAKING:
-                    action = AgentAction(action_type="none", argument="")
-                case ActionState.MODEL_SPEAKING:
-                    action = async_to_sync(st.session_state.agents[agent_name].aact)(
-                        st.session_state.environment_messages[agent_name]
-                    )
-                case ActionState.EVALUATION_WAITING:
-                    action = AgentAction(action_type="leave", argument="")
-                case _:
-                    action = AgentAction(action_type="none", argument="")
-            print("Model output action: ", action)
+        session_state: ActionState = st.session_state.state
+        model_in_turn = st.session_state.agent_models[agent_idx]
+        is_human = model_in_turn == HUMAN_MODEL_NAME
+
+        match agent_idx:
+            case 0:
+                match session_state:
+                    case ActionState.AGENT1_SPEAKING:
+                        action = act_function(user_input, is_human=is_human)
+                    case ActionState.EVALUATION_WAITING:
+                        action = AgentAction(action_type="leave", argument="")
+                    case _:
+                        action = AgentAction(action_type="none", argument="")
+
+            case 1:
+                match session_state:
+                    case ActionState.AGENT2_SPEAKING:
+                        action = act_function(user_input, is_human=is_human)
+                    case ActionState.EVALUATION_WAITING:
+                        action = AgentAction(action_type="leave", argument="")
+                    case _:
+                        action = AgentAction(action_type="none", argument="")
+        print(f"Agent {agent_idx} model {model_in_turn} output action: ", action)
 
         actions.append(action)
     actions = cast(list[AgentAction], actions)
@@ -415,14 +457,14 @@ def step(user_input: str | None = None) -> None:
         st.session_state.reasoning = info[st.session_state.env.agents[0]]["comments"]
         st.session_state.rewards_prompt = info["rewards_prompt"]["overall_prompt"]
 
-    match st.session_state.state:
-        case ActionState.HUMAN_SPEAKING:
-            st.session_state.state = ActionState.MODEL_WAITING
-        case ActionState.MODEL_SPEAKING:
-            st.session_state.state = ActionState.HUMAN_WAITING
+    session_state: ActionState = st.session_state.state
+    match session_state:
+        case ActionState.AGENT1_SPEAKING:
+            st.session_state.state = ActionState.AGENT2_WAITING
+        case ActionState.AGENT2_SPEAKING:
+            st.session_state.state = ActionState.AGENT1_WAITING
         case ActionState.EVALUATION_WAITING:
             st.session_state.state = ActionState.IDLE
-            st.session_state.active = False
         case ActionState.IDLE:
             st.session_state.state = ActionState.IDLE
         case _:
