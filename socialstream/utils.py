@@ -237,7 +237,6 @@ def get_abstract(description: str) -> str:
 
 
 def initialize_session_state(force_reload: bool = False) -> None:
-    # TODO initialize a preview of the scenario
     all_agents = AgentProfile.find().all()[:10]
     all_envs = EnvironmentProfile.find().all()[:10]
     st.session_state.agent_mapping = [
@@ -276,6 +275,7 @@ def initialize_session_state(force_reload: bool = False) -> None:
             scenario_choice=all_envs[0].codename,
             user_agent_name="PLACEHOLDER",
             agent_names=[],
+            reset_agents=True,
         )
 
 
@@ -347,19 +347,21 @@ def set_settings(
     user_agent_name: str,
     agent_names: list[str],
     reset_msgs: bool = False,
+    reset_agents: bool = True,
 ) -> None:  # type: ignore
-    # global st.session_state.human_agent_idx
     scenarios = st.session_state.env_mapping
     agent_map_1, agent_map_2 = st.session_state.agent_mapping
 
-    # for agent_name in agent_names:
-    #     if agent_name == user_agent_name:
-    #         st.session_state.human_agent_idx = agent_names.index(agent_name)
-    #         break
+    env = scenarios[scenario_choice] if reset_agents else st.session_state.env.profile
+    agents = (
+        [agent_map_1[agent_choice_1], agent_map_2[agent_choice_2]]
+        if reset_agents
+        else [agent.profile for agent in st.session_state.agents.values()]
+    )
 
     env_agent_combo = EnvAgentProfileCombo(
-        env=scenarios[scenario_choice],
-        agents=[agent_map_1[agent_choice_1], agent_map_2[agent_choice_2]],
+        env=env,
+        agents=agents,
     )
     set_from_env_agent_profile_combo(
         env_agent_combo=env_agent_combo, reset_msgs=reset_msgs

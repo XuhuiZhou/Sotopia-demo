@@ -19,11 +19,8 @@ from sotopia.messages import AgentAction
 from socialstream.utils import (
     HUMAN_MODEL_NAME,
     MODEL_LIST,
-    WAIT_STATE,
     ActionState,
     EnvAgentProfileCombo,
-    async_to_sync,
-    get_full_name,
     initialize_session_state,
     messageForRendering,
     print_current_speaker,
@@ -37,7 +34,28 @@ from socialstream.utils import (
 def chat_demo() -> None:
     initialize_session_state()
 
-    def choice_callback() -> None:
+    def other_choice_callback() -> None:
+        st.session_state.agent_models = [
+            st.session_state.agent1_model_choice,
+            st.session_state.agent2_model_choice,
+        ]
+        st.session_state.editable = st.session_state.edit_scenario
+        print("Editable: ", st.session_state.editable)
+        agent_choice_1 = st.session_state.agent_choice_1
+        agent_choice_2 = st.session_state.agent_choice_2
+        set_settings(
+            agent_choice_1=agent_choice_1,
+            agent_choice_2=agent_choice_2,
+            scenario_choice=st.session_state.scenario_choice,
+            user_agent_name="PLACEHOLDER",
+            agent_names=[
+                st.session_state.agent_choice_1,
+                st.session_state.agent_choice_2,
+            ],
+            reset_agents=False,
+        )
+
+    def env_agent_choice_callback() -> None:
         if st.session_state.active:
             st.warning("Please stop the conversation first.")
             st.stop()
@@ -48,14 +66,8 @@ def chat_demo() -> None:
             st.warning(
                 "The two agents cannot be the same. Please select different agents."
             )
-            st.stop()  # BUG: When the error is triggered the whole page will be demaged
-
-        st.session_state.agent_models = [
-            st.session_state.agent1_model_choice,
-            st.session_state.agent2_model_choice,
-        ]
-        st.session_state.editable = st.session_state.edit_scenario
-        print("Editable: ", st.session_state.editable)
+            st.session_state.error = True
+            return
 
         set_settings(
             agent_choice_1=agent_choice_1,
@@ -66,15 +78,15 @@ def chat_demo() -> None:
                 st.session_state.agent_choice_1,
                 st.session_state.agent_choice_2,
             ],
+            reset_agents=True,
         )
 
     st.checkbox(
         "Make the scenario editable",
         key="edit_scenario",
-        on_change=choice_callback,
+        on_change=other_choice_callback,
         disabled=st.session_state.active,
     )
-    # TODO changing from non-editable to editable will discard the edit made
 
     with st.expander("Create your scenario!", expanded=True):
         scenarios = st.session_state.env_mapping
@@ -87,7 +99,7 @@ def chat_demo() -> None:
                 scenarios.keys(),
                 disabled=st.session_state.active,
                 index=0,
-                on_change=choice_callback,
+                on_change=env_agent_choice_callback,
                 key="scenario_choice",
             )
 
@@ -104,7 +116,7 @@ def chat_demo() -> None:
                 agent_list_1.keys(),
                 disabled=st.session_state.active,
                 index=0,
-                on_change=choice_callback,
+                on_change=env_agent_choice_callback,
                 key="agent_choice_1",
             )
         with agent_col2:
@@ -113,18 +125,23 @@ def chat_demo() -> None:
                 agent_list_2.keys(),
                 disabled=st.session_state.active,
                 index=1,
-                on_change=choice_callback,
+                on_change=env_agent_choice_callback,
                 key="agent_choice_2",
             )
+        if agent_choice_1 == agent_choice_2:
+            st.warning(
+                "The two agents cannot be the same. Please select different agents."
+            )
+            st.stop()
 
-        model_col_1, model_col_2 = st.columns(2)  # TODO maybe we do not need this
+        model_col_1, model_col_2 = st.columns(2)
         with model_col_1:
             st.selectbox(
                 "Choose a model:",
                 MODEL_LIST,
                 disabled=st.session_state.active,
                 index=0,
-                on_change=choice_callback,
+                on_change=other_choice_callback,
                 key="agent1_model_choice",
             )
         with model_col_2:
@@ -133,17 +150,9 @@ def chat_demo() -> None:
                 MODEL_LIST,
                 disabled=st.session_state.active,
                 index=0,
-                on_change=choice_callback,
+                on_change=other_choice_callback,
                 key="agent2_model_choice",
             )
-
-        # st.selectbox(
-        #     "Which agent do you want to be?",
-        #     [agent_choice_1, agent_choice_2],
-        #     disabled=st.session_state.active,
-        #     on_change=choice_callback,
-        #     key="user_position",
-        # )
 
     def edit_callback(reset_msgs: bool = False) -> None:
         env_profiles: EnvironmentProfile = st.session_state.env.profile
@@ -166,53 +175,83 @@ def chat_demo() -> None:
         agent_infos = compose_agent_messages()
         env_info, goals_info = compose_env_messages()
 
-        st.text_area(
-            label="Change the scenario here:",
-            value=f"""{env_info}""",
-            height=150,
-            on_change=edit_callback,
-            key="edited_scenario",
-            disabled=st.session_state.active or not st.session_state.editable,
-        )
+        if st.session_state.editable:
+            st.text_area(
+                label="Change the scenario here:",
+                value=f"""{env_info}""",
+                height=150,
+                on_change=edit_callback,
+                key="edited_scenario",
+                disabled=st.session_state.active or not st.session_state.editable,
+            )
 
-        agent1_col, agent2_col = st.columns(2)
-        agent_cols = [agent1_col, agent2_col]
-        for agent_idx, agent_info in enumerate(agent_infos):
-            agent_col = agent_cols[agent_idx]
-            with agent_col:
-                st.text_area(
-                    label=f"Change the background info for Agent {agent_idx + 1} here:",
-                    value=f"""{agent_info}""",
-                    height=150,
-                    disabled=st.session_state.active or not st.session_state.editable,
-                )  # TODO not supported yet!!
+            agent1_col, agent2_col = st.columns(2)
+            agent_cols = [agent1_col, agent2_col]
+            for agent_idx, agent_info in enumerate(agent_infos):
+                agent_col = agent_cols[agent_idx]
+                with agent_col:
+                    st.text_area(
+                        label=f"Change the background info for Agent {agent_idx + 1} here:",
+                        value=f"""{agent_info}""",
+                        height=150,
+                        disabled=st.session_state.active
+                        or not st.session_state.editable,
+                    )  # TODO not supported yet!!
 
-        agent1_goal_col, agent2_goal_col = st.columns(2)
-        agent_goal_cols = [agent1_goal_col, agent2_goal_col]
-        for agent_idx, goal_info in enumerate(goals_info):
-            agent_goal_col = agent_goal_cols[agent_idx]
-            with agent_goal_col:
-                st.text_area(
-                    label=f"Change the goal for Agent {agent_idx + 1} here:",
-                    value=f"""{goal_info}""",
-                    height=150,
-                    key=f"edited_goal_{agent_idx}",
-                    on_change=edit_callback,
-                    disabled=st.session_state.active or not st.session_state.editable,
-                )
+            agent1_goal_col, agent2_goal_col = st.columns(2)
+            agent_goal_cols = [agent1_goal_col, agent2_goal_col]
+            for agent_idx, goal_info in enumerate(goals_info):
+                agent_goal_col = agent_goal_cols[agent_idx]
+                with agent_goal_col:
+                    st.text_area(
+                        label=f"Change the goal for Agent {agent_idx + 1} here:",
+                        value=f"""{goal_info}""",
+                        height=150,
+                        key=f"edited_goal_{agent_idx}",
+                        on_change=edit_callback,
+                        disabled=st.session_state.active
+                        or not st.session_state.editable,
+                    )
+        else:
+            st.markdown(
+                f"""**Scenario:** {env_info}""",
+                unsafe_allow_html=True,
+            )
 
-    def inactivate() -> None:
-        st.session_state.active = False
+            agent1_col, agent2_col = st.columns(2)
+            agent_cols = [agent1_col, agent2_col]
+            for agent_idx, agent_info in enumerate(agent_infos):
+                agent_col = agent_cols[agent_idx]
+                with agent_col:
+                    st.markdown(
+                        f"""**Agent {agent_idx + 1} Background:** {agent_info}""",
+                        unsafe_allow_html=True,
+                    )
+
+            agent1_goal_col, agent2_goal_col = st.columns(2)
+            agent_goal_cols = [agent1_goal_col, agent2_goal_col]
+            for agent_idx, goal_info in enumerate(goals_info):
+                agent_goal_col = agent_goal_cols[agent_idx]
+                with agent_goal_col:
+                    st.markdown(
+                        f"""**Agent {agent_idx + 1} Goal:** {goal_info}""",
+                    )
 
     def activate() -> None:
         st.session_state.active = True
 
     def activate_and_start() -> None:
         activate()
-        edit_callback(reset_msgs=True)
+
+        env_agent_combo = EnvAgentProfileCombo(
+            env=st.session_state.env.profile,
+            agents=[agent.profile for agent in st.session_state.agents.values()],
+        )
+        set_from_env_agent_profile_combo(
+            env_agent_combo=env_agent_combo, reset_msgs=True
+        )
 
     def stop_and_eval() -> None:
-        # inactivate()
         if st.session_state != ActionState.IDLE:
             st.session_state.state = ActionState.EVALUATION_WAITING
 
@@ -290,7 +329,7 @@ def chat_demo() -> None:
 
     if action_taken:
         time.sleep(3)  # sleep for a while to prevent running too fast
-        # TODO the problem is here, if the rerun is too fast then the message is not rendering
+        # TODO if the rerun is too fast then the message is not rendering
         st.rerun()
 
 
@@ -313,13 +352,6 @@ def streamlit_rendering(messages: list[messageForRendering]) -> None:
         else "🤖"
         for idx, agent_name in enumerate(agent_names)
     }  # TODO maybe change the avatar because all bot/human will cause confusion
-
-    # if st.session_state.human_agent_idx == 0:
-    #     avatar_mapping[agent1_name] = "👤"
-    #     avatar_mapping[agent2_name] = "🤖"
-    # else:
-    #     avatar_mapping[agent1_name] = "🤖"
-    #     avatar_mapping[agent2_name] = "👤"
 
     role_mapping = {
         "Background Info": "background",
