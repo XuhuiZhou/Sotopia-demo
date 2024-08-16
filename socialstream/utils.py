@@ -381,11 +381,12 @@ from typing import Optional
 
 
 def step(user_input: str | None = None) -> None:
-    env = st.session_state.env
-    print(env.profile)
-    print(env.agents)
+    env: ParallelSotopiaEnv = st.session_state.env
+    print("Env profile: ", env.profile)
+    print("Env agents: ", env.agents)
     for agent_name in env.agents:
-        print(st.session_state.agents[agent_name].goal)
+        print("Agent profile: ", st.session_state.agents[agent_name].profile)
+        print("Agent goal: ", st.session_state.agents[agent_name].goal)
 
     def act_function(user_input: Optional[str], is_human: bool) -> AgentAction:
         assert user_input is not None or not is_human, "User input is required"
@@ -482,3 +483,58 @@ def step(user_input: str | None = None) -> None:
             raise ValueError("Invalid state", st.session_state.state)
 
     done = all(terminated.values())
+
+
+def _map_gender_to_adj(gender: str) -> str:
+    gender_to_adj = {
+        "Man": "male",
+        "Woman": "female",
+        "Nonbinary": "nonbinary",
+    }
+    if gender:
+        return gender_to_adj[gender]
+    else:
+        return ""
+
+
+# def _agent_profile_to_friendabove_self(profile: AgentProfile, agent_id: int) -> str:
+#     return f"{profile.first_name} {profile.last_name} is a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values} <p viewer='agent_{agent_id}'>{profile.first_name}'s secrets: {profile.secret}. Big five type: {profile.big_five}</p>"
+
+
+def agent_profile_to_public_info(
+    profile: AgentProfile, display_name: bool = False
+) -> str:
+    base_str: str = f"a {profile.age}-year-old {_map_gender_to_adj(profile.gender)} {profile.occupation.lower()}. {profile.gender_pronoun} pronouns. {profile.public_info} Personality and values description: {profile.personality_and_values}."
+    if display_name:
+        return f"{profile.first_name} {profile.last_name} is {base_str}"
+    else:
+        return base_str.capitalize()
+
+
+def agent_profile_to_secret_info(
+    profile: AgentProfile, display_name: bool = False
+) -> str:
+    if display_name:
+        return f"{profile.first_name}'s secrets: {profile.secret}."
+    else:
+        return f"Secrets: {profile.secret}."
+
+
+def get_public_info(profile: AgentProfile, display_name: bool = True) -> str:
+    if profile.age == 0:
+        return profile.public_info
+    else:
+        return agent_profile_to_public_info(profile, display_name=display_name)
+
+
+def get_secret_info(profile: AgentProfile, display_name: bool = True) -> str:
+    if profile.age == 0:
+        return profile.secret
+    else:
+        return agent_profile_to_secret_info(profile, display_name=display_name)
+
+
+def _agent_profile_to_friendabove_self(
+    profile: AgentProfile, agent_id: int, display_name: bool = True
+) -> str:
+    return f"{get_public_info(profile=profile, display_name=display_name)}<p viewer='agent_{agent_id}'>{get_secret_info(profile=profile, display_name=display_name)}</p>"

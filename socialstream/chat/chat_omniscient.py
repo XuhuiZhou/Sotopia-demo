@@ -11,7 +11,6 @@ from sotopia.database import (
 )
 from sotopia.envs import ParallelSotopiaEnv
 from sotopia.envs.parallel import (
-    _agent_profile_to_friendabove_self,
     render_text_for_agent,
 )
 from sotopia.messages import AgentAction
@@ -21,6 +20,7 @@ from socialstream.utils import (
     MODEL_LIST,
     ActionState,
     EnvAgentProfileCombo,
+    _agent_profile_to_friendabove_self,
     initialize_session_state,
     messageForRendering,
     print_current_speaker,
@@ -154,10 +154,23 @@ def chat_demo() -> None:
                 key="agent2_model_choice",
             )
 
-    def edit_callback(reset_msgs: bool = False) -> None:
+    def edit_callback(key: str = "", reset_msgs: bool = False) -> None:
+        # set agent_goals and environment background
         env_profiles: EnvironmentProfile = st.session_state.env.profile
-        env_profiles.scenario = st.session_state.edited_scenario
-        agent_goals = [st.session_state[f"edited_goal_{i}"] for i in range(2)]
+        scenario = env_profiles.scenario
+        agent_goals = env_profiles.agent_goals
+
+        match key:
+            case "edited_scenario":
+                scenario = st.session_state[key]
+            case "edited_goal_0":
+                agent_goals[0] = st.session_state[key]
+            case "edited_goal_1":
+                agent_goals[1] = st.session_state[key]
+            # case _:
+            #     raise ValueError(f"Invalid key: {key}")
+
+        env_profiles.scenario = scenario
         env_profiles.agent_goals = agent_goals
 
         print("Edited scenario: ", env_profiles.scenario)
@@ -171,32 +184,98 @@ def chat_demo() -> None:
             env_agent_combo=env_agent_combo, reset_msgs=reset_msgs
         )
 
+    from socialstream.utils import get_public_info, get_secret_info
+
+    def agent_edit_callback(key: str = "") -> None:
+        agents = list(st.session_state.agents.values())
+
+        agents_info = [
+            {
+                "first_name": agent.profile.first_name,
+                "last_name": agent.profile.last_name,
+                "public_info": get_public_info(agent.profile, display_name=False),
+                "secret": get_secret_info(agent.profile, display_name=False),
+            }
+            for agent in agents
+        ]
+
+        match key:
+            case "edited_agent_0":
+                agents_info[0]["public_info"] = st.session_state[key]
+            case "edited_agent_1":
+                agents_info[1]["public_info"] = st.session_state[key]
+            case "edited_secret_0":
+                agents_info[0]["secret"] = st.session_state[key]
+            case "edited_secret_1":
+                agents_info[1]["secret"] = st.session_state[key]
+
+        agent_1_profile = AgentProfile(**agents_info[0])
+        agent_2_profile = AgentProfile(**agents_info[1])
+        print("Edited agent 1: ", agent_1_profile)
+        print("Edited agent 2: ", agent_2_profile)
+
+        env_agent_combo = EnvAgentProfileCombo(
+            env=st.session_state.env.profile,
+            agents=[agent_1_profile, agent_2_profile],
+        )
+        set_from_env_agent_profile_combo(
+            env_agent_combo=env_agent_combo, reset_msgs=False
+        )
+
     with st.expander("Check your social task!", expanded=True):
         agent_infos = compose_agent_messages()
         env_info, goals_info = compose_env_messages()
+        agent_public_infos = [
+            get_public_info(agent.profile, display_name=False)
+            for agent in st.session_state.agents.values()
+        ]
+        agent_secret_infos = [
+            get_secret_info(agent.profile, display_name=False)
+            for agent in st.session_state.agents.values()
+        ]
 
         if st.session_state.editable:
             st.text_area(
                 label="Change the scenario here:",
                 value=f"""{env_info}""",
-                height=150,
+                height=50,
                 on_change=edit_callback,
                 key="edited_scenario",
                 disabled=st.session_state.active or not st.session_state.editable,
+                args=("edited_scenario",),
             )
 
             agent1_col, agent2_col = st.columns(2)
             agent_cols = [agent1_col, agent2_col]
-            for agent_idx, agent_info in enumerate(agent_infos):
+            for agent_idx, agent_info in enumerate(agent_public_infos):
                 agent_col = agent_cols[agent_idx]
                 with agent_col:
                     st.text_area(
                         label=f"Change the background info for Agent {agent_idx + 1} here:",
                         value=f"""{agent_info}""",
-                        height=150,
+                        height=50,
                         disabled=st.session_state.active
                         or not st.session_state.editable,
+                        on_change=agent_edit_callback,
+                        key=f"edited_agent_{agent_idx}",
+                        args=(f"edited_agent_{agent_idx}",),
                     )  # TODO not supported yet!!
+
+            agent_secret_col1, agent_secret_col2 = st.columns(2)
+            for agent_idx, agent_info in enumerate(agent_secret_infos):
+                agent_secret_cols = [agent_secret_col1, agent_secret_col2]
+                agent_secret_col = agent_secret_cols[agent_idx]
+                with agent_secret_col:
+                    st.text_area(
+                        label=f"Change the secret info for Agent {agent_idx + 1} here:",
+                        value=f"""{agent_info}""",
+                        height=30,
+                        disabled=st.session_state.active
+                        or not st.session_state.editable,
+                        on_change=agent_edit_callback,
+                        key=f"edited_secret_{agent_idx}",
+                        args=(f"edited_secret_{agent_idx}",),
+                    )
 
             agent1_goal_col, agent2_goal_col = st.columns(2)
             agent_goal_cols = [agent1_goal_col, agent2_goal_col]
@@ -206,11 +285,12 @@ def chat_demo() -> None:
                     st.text_area(
                         label=f"Change the goal for Agent {agent_idx + 1} here:",
                         value=f"""{goal_info}""",
-                        height=150,
+                        height=50,
                         key=f"edited_goal_{agent_idx}",
                         on_change=edit_callback,
                         disabled=st.session_state.active
                         or not st.session_state.editable,
+                        args=(f"edited_goal_{agent_idx}",),
                     )
         else:
             st.markdown(
@@ -333,7 +413,7 @@ def chat_demo() -> None:
 
     if action_taken:
         time.sleep(3)  # sleep for a while to prevent running too fast
-        # TODO if the rerun is too fast then the message is not rendering
+        # BUG if the rerun is too fast then the message is not rendering
         st.rerun()
 
 
@@ -409,7 +489,9 @@ def compose_agent_messages() -> list[str]:  # type: ignore
 
     agent_to_render = [
         render_text_for_agent(
-            raw_text=_agent_profile_to_friendabove_self(agent.profile, agent_id),
+            raw_text=_agent_profile_to_friendabove_self(
+                agent.profile, agent_id, display_name=False
+            ),
             agent_id=st.session_state.human_agent_idx,
         )
         for agent_id, agent in enumerate(agents.values())
