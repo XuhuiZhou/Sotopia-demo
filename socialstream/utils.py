@@ -209,11 +209,20 @@ def render_for_humans(episode: EpisodeLog) -> list[messageForRendering]:
     )
 
     for idx, reasoning in enumerate(reasoning_per_agent):
+        reasoning_lines = reasoning.split("\n")
+        new_reasoning = ""
+        for reasoning_line in reasoning_lines:
+            dimension = reasoning_line.split(":")[0]
+            new_reasoning += (
+                (f"**{dimension}**: {':'.join(reasoning_line.split(':')[1:])}" + "\n")
+                if dimension != ""
+                else reasoning_line + "\n"
+            )
         messages_for_rendering.append(
             {
                 "role": f"Agent {idx + 1}",
                 "type": "comment",
-                "content": f"{reasoning}\n\nRewards: {str(episode.rewards[idx])}",
+                "content": f"**Agent {idx + 1} reasoning**:\n{new_reasoning}\n\n**Rewards**: {str(episode.rewards[idx])}",
             }
         )
 

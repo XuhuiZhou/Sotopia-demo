@@ -251,6 +251,8 @@ def chat_demo() -> None:
             env_agent_combo=env_agent_combo, reset_msgs=True
         )
 
+    action_taken: bool = False
+
     def stop_and_eval() -> None:
         if st.session_state != ActionState.IDLE:
             st.session_state.state = ActionState.EVALUATION_WAITING
@@ -270,6 +272,9 @@ def chat_demo() -> None:
         )
         if stop_button and st.session_state.active:
             st.session_state.state = ActionState.EVALUATION_WAITING
+            with st.spinner("Evaluating..."):
+                step(user_input="")
+                action_taken = True
 
     requires_agent_input = (
         st.session_state.state == ActionState.AGENT1_WAITING
@@ -287,7 +292,6 @@ def chat_demo() -> None:
         and st.session_state.agent_models[1] != HUMAN_MODEL_NAME
     )
 
-    action_taken: bool = False
     print_current_speaker()
     with st.form("user_input", clear_on_submit=True):
         user_input = st.text_input("Enter your message here:", key="user_input")
@@ -358,9 +362,9 @@ def streamlit_rendering(messages: list[messageForRendering]) -> None:
         "System": "info",
         "Environment": "env",
         "Observation": "obs",
-        "General": "info",
-        "Agent 1": "info",
-        "Agent 2": "info",
+        "General": "eval",
+        "Agent 1": "eval",
+        "Agent 2": "eval",
         agent1_name: agent1_name,
         agent2_name: agent2_name,
     }
@@ -387,8 +391,6 @@ def streamlit_rendering(messages: list[messageForRendering]) -> None:
                     """,
                     unsafe_allow_html=True,
                 )
-            elif index < 2:  # Apply foldable for the first two messages
-                continue
             else:
                 st.markdown(content.replace("\n", "<br />"), unsafe_allow_html=True)
 
