@@ -443,8 +443,8 @@ def streamlit_rendering(messages: list[messageForRendering]) -> None:
         "Environment": "env",
         "Observation": "obs",
         "General": "eval",
-        "Agent 1": "eval",
-        "Agent 2": "eval",
+        "Agent 1": agent1_name,
+        "Agent 2": agent2_name,
         agent1_name: agent1_name,
         agent2_name: agent2_name,
     }
@@ -471,6 +471,9 @@ def streamlit_rendering(messages: list[messageForRendering]) -> None:
                     """,
                     unsafe_allow_html=True,
                 )
+            elif role in [agent1_name, agent2_name]:
+                st.write(f"**{role}**")
+                st.markdown(content.replace("\n", "<br />"), unsafe_allow_html=True)
             else:
                 st.markdown(content.replace("\n", "<br />"), unsafe_allow_html=True)
 
