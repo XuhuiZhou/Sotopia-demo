@@ -83,19 +83,6 @@ def print_current_speaker() -> None:
             print("Evaluation is waiting...")
 
 
-# def print_current_speaker_v0() -> None:
-#     if st.session_state.state == ActionState.HUMAN_SPEAKING:
-#         print("Human is speaking...")
-#     elif st.session_state.state == ActionState.MODEL_SPEAKING:
-#         print("Model is speaking...")
-#     elif st.session_state.state == ActionState.HUMAN_WAITING:
-#         print("Human is waiting...")
-#     elif st.session_state.state == ActionState.EVALUATION_WAITING:
-#         print("Evaluation is waiting...")
-#     else:
-#         print("Idle...")
-
-
 class EnvAgentProfileCombo:
     def __init__(self, env: EnvironmentProfile, agents: list[AgentProfile]) -> None:
         self.env = env
@@ -225,6 +212,10 @@ def render_for_humans(episode: EpisodeLog) -> list[messageForRendering]:
                 "content": f"**Agent {idx + 1} reasoning**:\n{new_reasoning}\n\n**Rewards**: {str(episode.rewards[idx])}",
             }
         )
+
+    for item in messages_for_rendering:
+        item["content"] = item["content"].replace("$", "\\$")
+    # print("Replaced content", messages_for_rendering)
 
     return messages_for_rendering
 
@@ -381,16 +372,22 @@ from typing import Optional
 
 
 def step(user_input: str | None = None) -> None:
+    print_current_speaker()
     env: ParallelSotopiaEnv = st.session_state.env
     print("Env profile: ", env.profile)
-    print("Env agents: ", env.agents)
     for agent_name in env.agents:
         print("Agent profile: ", st.session_state.agents[agent_name].profile)
         print("Agent goal: ", st.session_state.agents[agent_name].goal)
 
-    def act_function(user_input: Optional[str], is_human: bool) -> AgentAction:
+    def act_function(
+        user_input: Optional[str], is_human: bool, agent_name: str
+    ) -> AgentAction:
         assert user_input is not None or not is_human, "User input is required"
         if is_human:
+            st.session_state.agents[agent_name].recv_message(
+                "Environment", st.session_state.environment_messages[agent_name]
+            )
+            # set the message to the agents
             return AgentAction(action_type="speak", argument=user_input)
         else:
             return async_to_sync(st.session_state.agents[agent_name].aact)(
@@ -405,11 +402,21 @@ def step(user_input: str | None = None) -> None:
         model_in_turn = st.session_state.agent_models[agent_idx]
         is_human = model_in_turn == HUMAN_MODEL_NAME
 
+        agent_speaking = (
+            agent_idx == 0 and session_state == ActionState.AGENT1_SPEAKING
+        ) or (agent_idx == 1 and session_state == ActionState.AGENT2_SPEAKING)
+        if not agent_speaking:
+            st.session_state.agents[agent_name].recv_message(
+                "Environment", st.session_state.environment_messages[agent_name]
+            )
+
         match agent_idx:
             case 0:
                 match session_state:
                     case ActionState.AGENT1_SPEAKING:
-                        action = act_function(user_input, is_human=is_human)
+                        action = act_function(
+                            user_input, is_human=is_human, agent_name=agent_name
+                        )
                     case ActionState.EVALUATION_WAITING:
                         action = AgentAction(action_type="leave", argument="")
                     case _:
@@ -418,7 +425,9 @@ def step(user_input: str | None = None) -> None:
             case 1:
                 match session_state:
                     case ActionState.AGENT2_SPEAKING:
-                        action = act_function(user_input, is_human=is_human)
+                        action = act_function(
+                            user_input, is_human=is_human, agent_name=agent_name
+                        )
                     case ActionState.EVALUATION_WAITING:
                         action = AgentAction(action_type="leave", argument="")
                     case _:
@@ -426,6 +435,7 @@ def step(user_input: str | None = None) -> None:
         print(f"Agent {agent_idx} model {model_in_turn} output action: ", action)
 
         actions.append(action)
+
     actions = cast(list[AgentAction], actions)
 
     for idx, agent_name in enumerate(st.session_state.env.agents):

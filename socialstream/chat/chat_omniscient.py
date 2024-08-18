@@ -372,7 +372,6 @@ def chat_demo() -> None:
         and st.session_state.agent_models[1] != HUMAN_MODEL_NAME
     )
 
-    print_current_speaker()
     with st.form("user_input", clear_on_submit=True):
         user_input = st.text_input("Enter your message here:", key="user_input")
 
