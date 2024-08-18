@@ -1,6 +1,6 @@
 import asyncio
 from functools import wraps
-from typing import TypedDict, cast
+from typing import Optional, TypedDict, cast
 
 import streamlit as st
 from sotopia.agents import Agents, LLMAgent
@@ -366,9 +366,6 @@ def set_settings(
     set_from_env_agent_profile_combo(
         env_agent_combo=env_agent_combo, reset_msgs=reset_msgs
     )
-
-
-from typing import Optional
 
 
 def step(user_input: str | None = None) -> None:

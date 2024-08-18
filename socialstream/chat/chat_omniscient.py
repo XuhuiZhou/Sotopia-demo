@@ -21,6 +21,8 @@ from socialstream.utils import (
     ActionState,
     EnvAgentProfileCombo,
     _agent_profile_to_friendabove_self,
+    get_public_info,
+    get_secret_info,
     initialize_session_state,
     messageForRendering,
     print_current_speaker,
@@ -184,11 +186,31 @@ def chat_demo() -> None:
             env_agent_combo=env_agent_combo, reset_msgs=reset_msgs
         )
 
-    from socialstream.utils import get_public_info, get_secret_info
+    def agent_edit_callback_finegrained(key: str = "", traits: list[str] = []) -> None:
+        agents = list(st.session_state.agents.values())
+        agents_info = [
+            {key: getattr(agent.profile, key) for key in traits} for agent in agents
+        ]
+        # "edited_agent_{agent_idx}_{trait_name}"
+        trait = key.split("-")[-1]
+        agent_idx = int(key.split("-")[-2])
+
+        agents_info[agent_idx][trait] = st.session_state[key]
+        agent_1_profile = AgentProfile(**agents_info[0])
+        agent_2_profile = AgentProfile(**agents_info[1])
+        print("Edited agent 1: ", agent_1_profile)
+        print("Edited agent 2: ", agent_2_profile)
+
+        env_agent_combo = EnvAgentProfileCombo(
+            env=st.session_state.env.profile,
+            agents=[agent_1_profile, agent_2_profile],
+        )
+        set_from_env_agent_profile_combo(
+            env_agent_combo=env_agent_combo, reset_msgs=False
+        )
 
     def agent_edit_callback(key: str = "") -> None:
         agents = list(st.session_state.agents.values())
-
         agents_info = [
             {
                 "first_name": agent.profile.first_name,
@@ -245,37 +267,71 @@ def chat_demo() -> None:
                 args=("edited_scenario",),
             )
 
-            agent1_col, agent2_col = st.columns(2)
-            agent_cols = [agent1_col, agent2_col]
-            for agent_idx, agent_info in enumerate(agent_public_infos):
-                agent_col = agent_cols[agent_idx]
-                with agent_col:
-                    st.text_area(
-                        label=f"Change the background info for Agent {agent_idx + 1} here:",
-                        value=f"""{agent_info}""",
-                        height=50,
-                        disabled=st.session_state.active
-                        or not st.session_state.editable,
-                        on_change=agent_edit_callback,
-                        key=f"edited_agent_{agent_idx}",
-                        args=(f"edited_agent_{agent_idx}",),
-                    )  # TODO not supported yet!!
+            # agent1_col, agent2_col = st.columns(2)
+            # agent_cols = [agent1_col, agent2_col]
+            # for agent_idx, agent_info in enumerate(agent_public_infos):
+            #     agent_col = agent_cols[agent_idx]
+            #     with agent_col:
+            #         st.text_area(
+            #             label=f"Change the background info for Agent {agent_idx + 1} here:",
+            #             value=f"""{agent_info}""",
+            #             height=50,
+            #             disabled=st.session_state.active
+            #             or not st.session_state.editable,
+            #             on_change=agent_edit_callback,
+            #             key=f"edited_agent_{agent_idx}",
+            #             args=(f"edited_agent_{agent_idx}",),
+            #         )
 
-            agent_secret_col1, agent_secret_col2 = st.columns(2)
-            for agent_idx, agent_info in enumerate(agent_secret_infos):
-                agent_secret_cols = [agent_secret_col1, agent_secret_col2]
-                agent_secret_col = agent_secret_cols[agent_idx]
-                with agent_secret_col:
-                    st.text_area(
-                        label=f"Change the secret info for Agent {agent_idx + 1} here:",
-                        value=f"""{agent_info}""",
-                        height=30,
-                        disabled=st.session_state.active
-                        or not st.session_state.editable,
-                        on_change=agent_edit_callback,
-                        key=f"edited_secret_{agent_idx}",
-                        args=(f"edited_secret_{agent_idx}",),
-                    )
+            # agent_secret_col1, agent_secret_col2 = st.columns(2)
+            # for agent_idx, agent_info in enumerate(agent_secret_infos):
+            #     agent_secret_cols = [agent_secret_col1, agent_secret_col2]
+            #     agent_secret_col = agent_secret_cols[agent_idx]
+            #     with agent_secret_col:
+            #         st.text_area(
+            #             label=f"Change the secret info for Agent {agent_idx + 1} here:",
+            #             value=f"""{agent_info}""",
+            #             height=30,
+            #             disabled=st.session_state.active
+            #             or not st.session_state.editable,
+            #             on_change=agent_edit_callback,
+            #             key=f"edited_secret_{agent_idx}",
+            #             args=(f"edited_secret_{agent_idx}",),
+            #         )
+
+            # agent: first name, last name, age, occupation, public info, personality and values, secret
+            # use separate text_area for each info
+            agent_list = list(st.session_state.agents.values())
+            agent_traits = [
+                "first_name",
+                "last_name",
+                "age",
+                "occupation",
+                "personality_and_values",
+                "public_info",
+                "secret",
+            ]
+
+            for agent_idx, agent in enumerate(agent_list):
+                st.markdown(f"**Agent {agent_idx + 1} information**")
+                basic_info_cols = st.columns([1, 1, 1, 1, 3, 3, 3])
+                for idx, (trait_name, trait_col) in enumerate(
+                    zip(agent_traits, basic_info_cols)
+                ):
+                    with trait_col:
+                        st.text_area(
+                            label=f"{trait_name.capitalize()}",
+                            value=f"""{getattr(agent_list[agent_idx].profile, trait_name)}""",
+                            height=5,
+                            disabled=st.session_state.active
+                            or not st.session_state.editable,
+                            on_change=agent_edit_callback_finegrained,
+                            key=f"edited_agent-{agent_idx}-{trait_name}",
+                            args=(
+                                f"edited_agent-{agent_idx}-{trait_name}",
+                                agent_traits,
+                            ),
+                        )
 
             agent1_goal_col, agent2_goal_col = st.columns(2)
             agent_goal_cols = [agent1_goal_col, agent2_goal_col]
