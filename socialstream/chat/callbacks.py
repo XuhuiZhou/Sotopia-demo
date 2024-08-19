@@ -1,8 +1,13 @@
 import streamlit as st
-from socialstream.utils import set_settings, set_from_env_agent_profile_combo, EnvAgentProfileCombo
-from socialstream.rendering_utils import get_public_info, get_secret_info
-
 from sotopia.database import AgentProfile, EnvironmentProfile
+
+from socialstream.rendering_utils import get_public_info, get_secret_info
+from socialstream.utils import (
+    EnvAgentProfileCombo,
+    set_from_env_agent_profile_combo,
+    set_settings,
+)
+
 
 def other_choice_callback() -> None:
     st.session_state.agent_models = [
@@ -24,7 +29,8 @@ def other_choice_callback() -> None:
         ],
         reset_agents=False,
     )
-    
+
+
 def agent_edit_callback(key: str = "") -> None:
     agents = list(st.session_state.agents.values())
     agents_info = [
@@ -56,10 +62,9 @@ def agent_edit_callback(key: str = "") -> None:
         env=st.session_state.env.profile,
         agents=[agent_1_profile, agent_2_profile],
     )
-    set_from_env_agent_profile_combo(
-        env_agent_combo=env_agent_combo, reset_msgs=False
-    )
-    
+    set_from_env_agent_profile_combo(env_agent_combo=env_agent_combo, reset_msgs=False)
+
+
 def edit_callback(key: str = "", reset_msgs: bool = False) -> None:
     # set agent_goals and environment background
     env_profiles: EnvironmentProfile = st.session_state.env.profile
@@ -90,6 +95,7 @@ def edit_callback(key: str = "", reset_msgs: bool = False) -> None:
         env_agent_combo=env_agent_combo, reset_msgs=reset_msgs
     )
 
+
 def agent_edit_callback_finegrained(key: str = "", traits: list[str] = []) -> None:
     agents = list(st.session_state.agents.values())
     agents_info = [
@@ -109,6 +115,57 @@ def agent_edit_callback_finegrained(key: str = "", traits: list[str] = []) -> No
         env=st.session_state.env.profile,
         agents=[agent_1_profile, agent_2_profile],
     )
-    set_from_env_agent_profile_combo(
-        env_agent_combo=env_agent_combo, reset_msgs=False
+    set_from_env_agent_profile_combo(env_agent_combo=env_agent_combo, reset_msgs=False)
+
+
+from sotopia.database import EpisodeLog
+
+
+def save_callback():
+    environment = st.session_state.env
+    agent_list = list(st.session_state.agents.values())
+    messages = st.session_state.messages
+    reasoning = st.session_state.reasoning
+    rewards = st.session_state.rewards
+
+    epilog = EpisodeLog(
+        environment=environment.profile.pk,
+        agents=[agent.profile.pk for agent in agent_list],
+        tag="tmp",
+        models=[
+            environment.model_name,
+            agent_list[0].model_name,
+            agent_list[1].model_name,
+        ],
+        messages=[
+            [(m[0], m[1], m[2].to_natural_language()) for m in messages_in_turn]
+            for messages_in_turn in messages
+        ],
+        reasoning=reasoning,
+        rewards=rewards,
+        rewards_prompt="",
     )
+    from socialstream.rendering_utils import render_messages
+
+    messages = render_messages(
+        env=environment,
+        agent_list=agent_list,
+        messages=messages,
+        reasoning=reasoning,
+        rewards=rewards,
+    )
+    message_list = []
+    for message in messages:
+        if message["type"] in ["said", "action"]:
+            message_list.append(
+                f"{message['role']} {message['type']}: {message['content']}"
+            )
+        else:
+            message_list.append(f"{message['content']}")
+
+    message_list = [message.replace("**", "") for message in message_list]
+    return "\n".join(message_list)
+
+    # print(epilog.render_for_humans())
+    # texts = "\n".join(epilog.render_for_humans()[1])
+    # return texts

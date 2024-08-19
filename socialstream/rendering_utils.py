@@ -1,18 +1,20 @@
-from sotopia.envs.parallel import ParallelSotopiaEnv
 from typing import TypedDict
-from sotopia.database import EpisodeLog, AgentProfile
+
 from sotopia.agents import Agents, LLMAgent
+from sotopia.database import AgentProfile, EpisodeLog
 from sotopia.envs.parallel import (
+    ParallelSotopiaEnv,
     render_text_for_agent,
     render_text_for_environment,
 )
-from sotopia.database import EpisodeLog
 from sotopia.messages import Message
+
 
 class messageForRendering(TypedDict):
     role: str
     type: str
     content: str
+
 
 def parse_reasoning(reasoning: str, num_agents: int) -> tuple[list[str], str]:
     """Parse the reasoning string into a dictionary."""
@@ -29,6 +31,7 @@ def parse_reasoning(reasoning: str, num_agents: int) -> tuple[list[str], str]:
 
     return comment_chunks, general_comment
 
+
 def _map_gender_to_adj(gender: str) -> str:
     gender_to_adj = {
         "Man": "male",
@@ -40,12 +43,14 @@ def _map_gender_to_adj(gender: str) -> str:
     else:
         return ""
 
+
 def compose_env_messages(env: ParallelSotopiaEnv) -> tuple[str, list[str]]:
     env_profile = env.profile
     env_to_render = env_profile.scenario
     goals_to_render = env_profile.agent_goals
 
     return env_to_render, goals_to_render
+
 
 def render_for_humans(episode: EpisodeLog) -> list[messageForRendering]:
     """Generate a list of messages for human-readable version of the episode log."""
@@ -161,6 +166,7 @@ def render_for_humans(episode: EpisodeLog) -> list[messageForRendering]:
 
     return messages_for_rendering
 
+
 def compose_agent_messages(agents: Agents) -> list[str]:
     agent_to_render = [
         render_text_for_agent(
@@ -174,8 +180,13 @@ def compose_agent_messages(agents: Agents) -> list[str]:
     return agent_to_render
 
 
-
-def render_messages(env: ParallelSotopiaEnv, agent_list: list[LLMAgent], messages: list[list[tuple[str, str, Message]]], reasoning: list[str], rewards: list[list[float]]) -> list[messageForRendering]:
+def render_messages(
+    env: ParallelSotopiaEnv,
+    agent_list: list[LLMAgent],
+    messages: list[list[tuple[str, str, Message]]],
+    reasoning: list[str],
+    rewards: list[list[float]],
+) -> list[messageForRendering]:
     epilog = EpisodeLog(
         environment=env.profile.pk,
         agents=[agent.profile.pk for agent in agent_list],
@@ -191,6 +202,7 @@ def render_messages(env: ParallelSotopiaEnv, agent_list: list[LLMAgent], message
     )
     rendered_messages = render_for_humans(epilog)
     return rendered_messages
+
 
 def agent_profile_to_public_info(
     profile: AgentProfile, display_name: bool = False

@@ -7,6 +7,7 @@ from socialstream.chat.callbacks import (
     agent_edit_callback_finegrained,
     edit_callback,
     other_choice_callback,
+    save_callback,
 )
 from socialstream.rendering_utils import (
     compose_agent_messages,
@@ -217,7 +218,7 @@ def chat_demo() -> None:
                     st.text_area(
                         label=f"Change the goal for Agent {agent_idx + 1} here:",
                         value=f"""{goal_info}""",
-                        height=50,
+                        height=150,
                         key=f"edited_goal_{agent_idx}",
                         on_change=edit_callback,
                         disabled=st.session_state.active
@@ -269,7 +270,7 @@ def chat_demo() -> None:
         if st.session_state != ActionState.IDLE:
             st.session_state.state = ActionState.EVALUATION_WAITING
 
-    start_col, stop_col = st.columns(2)
+    start_col, stop_col, save_col = st.columns(3)
     with start_col:
         start_button = st.button(
             "Start", disabled=st.session_state.active, on_click=activate_and_start
@@ -287,6 +288,16 @@ def chat_demo() -> None:
             with st.spinner("Evaluating..."):
                 step(user_input="")
                 action_taken = True
+
+    with save_col:
+        save_button = st.download_button(
+            label="Save current conversation",
+            file_name="saved_conversation.txt",
+            mime="text/plain",
+            data=save_callback(),
+            disabled=st.session_state.active,
+            # use_container_width=True
+        )
 
     requires_agent_input = (
         st.session_state.state == ActionState.AGENT1_WAITING
