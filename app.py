@@ -3,7 +3,7 @@ import os
 import streamlit as st
 from sotopia.database import EpisodeLog
 
-from socialstream.chat import chat_demo, chat_demo_omniscient
+from socialstream.chat import chat_demo_omniscient
 from socialstream.rendering import rendering_demo
 
 DISPLAY_MODE = "Display Episodes"

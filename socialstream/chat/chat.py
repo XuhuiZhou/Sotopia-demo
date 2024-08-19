@@ -24,10 +24,10 @@ from sotopia.envs.parallel import (
 )
 from sotopia.messages import AgentAction
 
+from socialstream.rendering_utils import messageForRendering
 from socialstream.utils import (
     async_to_sync,
     initialize_session_state,
-    messageForRendering,
     render_for_humans,
 )
 
