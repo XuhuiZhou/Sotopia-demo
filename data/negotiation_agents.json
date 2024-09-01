@@ -1,0 +1,43 @@
+[
+    {
+        "first_name": "W",
+        "last_name": "S",
+        "age": 30,
+        "occupation": "Manager",
+        "personality_and_values": "WS is exuberant, spontaneous, and pleasure-seeking, often making impulsive decisions.",
+        "public_info": "WS enjoys spending time outdoors, hiking, and rock climbing",
+        "secret": "Secretly in love with her best friend's husband"
+    }, {
+        "first_name": "G",
+        "last_name": "D",
+        "age": 21,
+        "occupation": "Candidate",
+        "personality_and_values": "GD is an introvert, and are somewhat aloof. \nGD is not very talkative and tends to give short answers.",
+        "public_info": "GD has a lot of experience in graphic design and have worked at a graphic design company that printed t-shirts.\nGD has not traveled very much and have not done much travel planning.\nGD was an ok student and GD's favorite courses were in art.\nFor hobbies GD likes painting and photography.",
+        "secret": "GD does not have experience planning events.\nGD took a test in social perceptiveness, and GDr score was 21.\nGD are sort of organized but GD does not like filing and doing any sort of tedious work like that.\nGD is not really sure if GD wants this job, but it wouldn't hurt to apply."
+    }, {
+        "first_name": "F",
+        "last_name": "T",
+        "age": 22,
+        "occupation": "Candidate",
+        "personality_and_values": "FT is an extrovert who loves to travel and enjoys spending time with groups of friends. FT is talkative, though sometimes jumps from one idea to another during conversations.",
+        "public_info": "FT has traveled all their life and loves going hiking and skiing. FT was an ok student, started college but took time off after one year.",
+        "secret": "FT took a test in social perceptiveness and scored 25. FT thinks they might like to work at this job, especially if it offers opportunities to travel. FT has never really worked in an office, and does not consider themselves good at drawing or art."
+    }, {
+        "first_name": "G",
+        "last_name": "R",
+        "age": 30,
+        "occupation": "head of public relation",
+        "personality_and_values": "GR, willfully ignorant of technical details, refuses to feel talked down to, dismissive of the importance of cybersecurity. feels that technical staff overstate the severity of incidents and unnecessarily assume the worst. Her decision-making is intuitive.",
+        "public_info": "GR enjoys biking and photography",
+        "secret": "GR sells forged paintings to wealthy clients."
+    }, {
+        "first_name": "S",
+        "last_name": "J",
+        "age": 22,
+        "occupation": "technical employee",
+        "personality_and_values": "SJ is serious, professional, and goal-oriented, rarely making impulsive decisions.",
+        "public_info": "SJ enjoys spending time outdoors, hiking, and rock climbing.",
+        "secret": "SJ was secretly in love with her best friend's husband."
+    }
+]

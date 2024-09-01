@@ -40,3 +40,10 @@ Run `pre-commit run --all-files` to run all checks
 (You can also run `pre-commit run --all-files` to run all checks) -->
 ### Check github action result
 Check the github action result to make sure all tests pass. If not, fix the errors and push again.
+
+### About Callbacks in Streamlit
+From [Streamlit documentation on session state](https://docs.streamlit.io/develop/api-reference/caching-and-state/st.session_state).
+> "When updating Session state in response to events, a callback function gets executed first, and then the app is executed from top to bottom."
+
+
+In this code, we utilize callbacks to handle the clickability of buttons and ensure that any edited information is promptly and accurately updated.

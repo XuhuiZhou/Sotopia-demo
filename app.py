@@ -3,12 +3,13 @@ import os
 import streamlit as st
 from sotopia.database import EpisodeLog
 
-from socialstream.chat import chat_demo
+from socialstream.chat import chat_demo_omniscient
 from socialstream.rendering import rendering_demo
 
-
 DISPLAY_MODE = "Display Episodes"
-CHAT_MODE = "Chat with Model"
+# CHAT_MODE = "Chat with Model"
+CHAT_OMNISCIENT_MODE = "Chat with Model"
+
 st.set_page_config(page_title="SocialStream_Demo", page_icon="🧊", layout="wide")
 
 
@@ -24,8 +25,10 @@ def display() -> None:
     rendering_demo(messages)
 
 
-option = st.sidebar.radio("Function", (CHAT_MODE, DISPLAY_MODE))
+option = st.sidebar.radio("Function", (CHAT_OMNISCIENT_MODE, DISPLAY_MODE))
 if option == DISPLAY_MODE:
     display()
-elif option == CHAT_MODE:
-    chat_demo()
+# elif option == CHAT_MODE:
+#     chat_demo()
+elif option == CHAT_OMNISCIENT_MODE:
+    chat_demo_omniscient()
